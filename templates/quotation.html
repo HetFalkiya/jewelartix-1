@@ -459,11 +459,32 @@ select option { background: var(--card); }
         </div>
       </div>
 
-      <div class="d-header">
-        <span>Shape</span><span>Size (mm)</span><span>Qty</span><span>Carats</span><span>Price/ct</span><span>Stone Type</span><span></span>
+      <div class="tabs" style="margin-bottom:10px;">
+        <button class="tab active" id="tab-manual" onclick="switchDiamondTab('manual')">✍️ Manual</button>
+        <button class="tab" id="tab-paste" onclick="switchDiamondTab('paste')">📋 Paste Data</button>
       </div>
-      <div id="dRows"></div>
-      <button class="btn-add" onclick="addDRow()">+ Add Diamond Type</button>
+
+      <!-- Manual Tab -->
+      <div id="manualDiamondTab">
+        <div class="d-header">
+          <span>Shape</span><span>Size (mm)</span><span>Qty</span><span>Carats</span><span>Price/ct</span><span>Stone Type</span><span></span>
+        </div>
+        <div id="dRows"></div>
+        <button class="btn-add" onclick="addDRow()">+ Add Diamond Type</button>
+      </div>
+
+      <!-- Paste Data Tab -->
+      <div id="pasteDiamondTab" style="display:none;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">Paste CSV — Shape, Size, Qty, Carat (one row per line):</div>
+        <textarea id="pasteInput" rows="7" placeholder="Shape,Size,Qty,Carat
+Round,2.60x2.60,58,4.06
+Round,1.50x1.50,10,0.013
+Oval,7.20x5.20,2,0.74
+Pear,5.50x3.50,4,0.25
+Marquise,10.50x5.25,1,0.94" style="width:100%;font-family:monospace;font-size:11px;resize:vertical;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:8px;"></textarea>
+        <button class="btn-ai" style="margin-top:8px;" onclick="parsePasteData()">⚡ Parse & Fill Rows</button>
+        <div id="pasteStatus" style="margin-top:6px;"></div>
+      </div>
     </div>
 
     <div class="divider"></div>
@@ -965,6 +986,14 @@ function lookupDiamondPrice(shape, sizeRaw) {
   return null;
 }
 
+// ── Diamond tab switch ─────────────────────────────────────────
+function switchDiamondTab(tab) {
+  document.getElementById('manualDiamondTab').style.display = tab==='manual' ? '' : 'none';
+  document.getElementById('pasteDiamondTab').style.display  = tab==='paste'  ? '' : 'none';
+  document.getElementById('tab-manual').classList.toggle('active', tab==='manual');
+  document.getElementById('tab-paste').classList.toggle('active',  tab==='paste');
+}
+
 // ── Parse Paste Data ───────────────────────────────────────────
 function parsePasteData() {
   const raw = document.getElementById('pasteInput').value.trim();
@@ -1024,7 +1053,7 @@ function parsePasteData() {
       `<div class="badge err">✗ No valid rows — check format: Shape,Size,Qty,Carat or Shape,Size,Carat</div>`; return;
   }
 
-  switchTab('manual');
+  switchDiamondTab('manual');
 
   setTimeout(() => {
     document.getElementById('dRows').innerHTML = '';
@@ -1091,7 +1120,7 @@ If no stones visible return: []` }
       document.getElementById('analyzeBtn').disabled = false;
       return;
     }
-    switchTab('manual');
+    switchDiamondTab('manual');
     document.getElementById('dRows').innerHTML = ''; dRowCount = 0;
     diamonds.forEach(d => {
       const sz = normalizeSize(d.size || d.size_mm || '');
