@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JewelArtix — Quotation System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600&display=swap');
+
+:root {
+  --gold: #C9A84C;
+  --gold-light: #E8D5A3;
+  --gold-dark: #8B6914;
+  --black: #0D0D0D;
+  --surface: #161616;
+  --card: #1E1E1E;
+  --border: #2E2E2E;
+  --text: #EFEFEF;
+  --muted: #888;
+  --green: #56C075;
+  --red: #E57373;
+  --blue: #64B5F6;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--black); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; min-height: 100vh; }
+
+/* ── Header ── */
+header {
+  background: linear-gradient(90deg, #111 0%, #1a1500 50%, #111 100%);
+  border-bottom: 1px solid var(--gold-dark);
+  padding: 14px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-gem {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+  clip-path: polygon(50% 0%, 100% 35%, 80% 100%, 20% 100%, 0% 35%);
+}
+.logo h1 { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold-light); letter-spacing: 2px; }
+.logo span { font-size: 10px; color: var(--muted); letter-spacing: 3px; display: block; text-transform: uppercase; }
+.header-badge { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; border: 1px solid var(--border); padding: 4px 12px; border-radius: 20px; }
+
+/* ── Layout ── */
+.app { display: grid; grid-template-columns: 480px 1fr; gap: 0; min-height: calc(100vh - 63px); }
+
+/* ── Left Panel ── */
+.left-panel { background: var(--surface); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; max-height: calc(100vh - 63px); }
+.right-panel { padding: 20px; overflow-y: auto; max-height: calc(100vh - 63px); }
+
+/* ── Section ── */
+.section { margin-bottom: 18px; }
+.section-title {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--gold); font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.section-title .num {
+  background: var(--gold-dark); color: #000;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; flex-shrink: 0;
+}
+
+/* ── Form Elements ── */
+label { display: block; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; margin-top: 10px; }
+label:first-child { margin-top: 0; }
+input[type="text"], input[type="number"], select, textarea {
+  width: 100%; background: var(--card); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); padding: 8px 11px;
+  font-family: 'Inter', sans-serif; font-size: 13px; outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--gold-dark); }
+select option { background: var(--card); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+/* ── Upload ── */
+.upload-zone {
+  border: 2px dashed var(--border); border-radius: 7px;
+  padding: 18px; text-align: center; cursor: pointer;
+  position: relative; transition: all 0.2s;
+}
+.upload-zone:hover { border-color: var(--gold); background: rgba(201,168,76,0.03); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-zone .icon { font-size: 22px; margin-bottom: 5px; }
+.upload-zone strong { color: var(--gold-light); font-size: 12px; display: block; margin-bottom: 3px; }
+.upload-zone p { color: var(--muted); font-size: 11px; }
+
+/* ── Badge ── */
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 500; margin-top: 6px; }
+.badge.ok { background: rgba(86,192,117,0.15); color: var(--green); }
+.badge.err { background: rgba(229,115,115,0.15); color: var(--red); }
+.badge.info { background: rgba(201,168,76,0.12); color: var(--gold); }
+
+/* ── Diamond Rows ── */
+.d-row { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 7px; }
+.d-row-grid { display: grid; grid-template-columns: 120px 85px 50px 75px 80px 90px 26px; gap: 6px; align-items: center; }
+.d-row-grid.dual { grid-template-columns: 120px 135px 50px 75px 80px 90px 26px; }
+.d-size-single input { width: 100%; }
+.d-size-dual { display: grid; grid-template-columns: 1fr 14px 1fr; gap: 3px; align-items: center; }
+.d-size-dual span { text-align: center; color: var(--muted); font-size: 12px; font-weight: 600; }
+.d-row label { margin-top: 0; font-size: 9px; }
+.price-auto  { border-color: var(--green)     !important; color: var(--green)     !important; background: rgba(86,192,117,0.08) !important; }
+.price-manual{ border-color: var(--gold-dark) !important; }
+.btn-rm { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 0 2px; transition: color 0.2s; line-height: 1; }
+.btn-rm:hover { color: var(--red); }
+.btn-add { width: 100%; background: none; border: 1px dashed var(--border); color: var(--muted); border-radius: 5px; padding: 8px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; margin-top: 8px; }
+.btn-add:hover { border-color: var(--gold); color: var(--gold); }
+.d-header { display: grid; grid-template-columns: 120px 85px 50px 75px 80px 90px 26px; gap: 6px; margin-bottom: 5px; padding: 0 4px; }
+.d-header.dual-header { grid-template-columns: 120px 135px 50px 75px 80px 90px 26px; }
+.d-header span { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+
+/* ── Tabs ── */
+.tabs { display: flex; background: var(--card); border-radius: 6px; padding: 3px; gap: 2px; margin-bottom: 12px; }
+.tab { flex: 1; padding: 7px; text-align: center; border-radius: 4px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); border: none; background: none; transition: all 0.2s; }
+.tab.active { background: var(--surface); color: var(--gold); border: 1px solid var(--gold-dark); }
+
+/* ── Photo zone ── */
+.photo-zone { border: 2px dashed var(--border); border-radius: 7px; padding: 18px; text-align: center; cursor: pointer; position: relative; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; }
+.photo-zone:hover { border-color: var(--gold); }
+.photo-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.photo-zone img { max-height: 120px; border-radius: 5px; object-fit: contain; }
+.photo-zone p { color: var(--muted); font-size: 11px; }
+
+/* ── Buttons ── */
+.btn-ai { background: linear-gradient(135deg, var(--gold-dark), var(--gold)); border: none; border-radius: 5px; color: #000; padding: 9px 16px; cursor: pointer; font-weight: 700; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; width: 100%; margin-top: 8px; transition: opacity 0.2s; }
+.btn-ai:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-ai:hover:not(:disabled) { opacity: 0.85; }
+
+.btn-generate { background: linear-gradient(135deg, var(--gold-dark), var(--gold)); border: none; border-radius: 7px; color: #000; padding: 13px; cursor: pointer; font-weight: 700; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; width: 100%; margin-top: 14px; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+.btn-generate:hover { box-shadow: 0 4px 20px rgba(201,168,76,0.3); transform: translateY(-1px); }
+.btn-generate:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-pdf { background: var(--card); border: 1px solid var(--gold-dark); border-radius: 7px; color: var(--gold); padding: 11px; cursor: pointer; font-weight: 600; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; width: 100%; margin-top: 10px; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+.btn-pdf:hover { background: var(--gold-dark); color: #000; }
+
+/* ── Spinner ── */
+.spin-row { display: flex; align-items: center; gap: 7px; color: var(--gold); font-size: 11px; padding: 6px 0; }
+.spinner { width: 13px; height: 13px; border: 2px solid rgba(201,168,76,0.3); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Excel preview ── */
+.xls-preview { max-height: 140px; overflow-y: auto; border: 1px solid var(--border); border-radius: 5px; margin-top: 8px; }
+.xls-preview table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.xls-preview th { background: var(--card); color: var(--gold); padding: 5px 8px; text-align: left; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; position: sticky; top: 0; }
+.xls-preview td { padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--muted); }
+.xls-preview tr:hover td { background: var(--card); color: var(--text); }
+
+/* ── Right: Quotation Preview ── */
+.quot-paper {
+  background: #fff; border-radius: 8px; padding: 0;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  overflow: hidden; color: #222;
+  font-family: 'Inter', sans-serif;
+}
+
+.quot-header {
+  background: #1a1a2e; color: #fff;
+  padding: 18px 28px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.quot-header h2 { font-size: 26px; font-weight: 700; letter-spacing: 4px; color: #fff; }
+.quot-header-right { text-align: right; font-size: 11px; color: #aaa; line-height: 1.8; }
+.quot-header-right strong { color: #fff; font-size: 13px; }
+
+.quot-meta { background: #f8f8f8; border-bottom: 2px solid #e0e0e0; padding: 10px 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.quot-meta-item { font-size: 11px; }
+.quot-meta-item .mk { color: #888; display: block; font-size: 10px; }
+.quot-meta-item .mv { font-weight: 600; color: #222; }
+
+.quot-body { padding: 16px 28px; }
+
+.quot-section-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; color: #1a1a2e;
+  margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1px;
+}
+.quot-section-title .icon { font-size: 15px; }
+
+.quot-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
+.quot-table th { background: #1a1a2e; color: #fff; padding: 7px 10px; text-align: left; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+.quot-table th:last-child, .quot-table td:last-child { text-align: right; }
+.quot-table td { padding: 6px 10px; border-bottom: 1px solid #eee; }
+.quot-table tr:hover td { background: #f9f9f9; }
+.quot-table .subtotal-row td { background: #f0f0f0; font-weight: 600; font-size: 11px; }
+.quot-table .subtotal-row td:last-child { color: #1a1a2e; }
+
+.match-ok { color: #2e7d32; font-size: 10px; }
+.match-warn { color: #c62828; font-size: 10px; }
+
+.quot-summary { margin-top: 16px; border: 2px solid #1a1a2e; border-radius: 6px; overflow: hidden; }
+.quot-summary-head { background: #1a1a2e; color: #fff; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; padding: 8px 14px; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+.quot-summary-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; padding: 7px 14px; border-bottom: 1px solid #eee; font-size: 12px; }
+.quot-summary-row:last-child { border: none; }
+.quot-summary-row.total { background: #1a1a2e; color: #fff; font-weight: 700; font-size: 13px; }
+.quot-summary-head span:not(:first-child), .quot-summary-row span:not(:first-child) { text-align: right; }
+.quot-summary-row.total span { color: #FFD700; }
+.quot-summary-row.total span:first-child { color: #fff; }
+
+.quot-notes { background: #fffde7; border-top: 2px solid #ffd54f; padding: 12px 28px; font-size: 10px; color: #555; }
+.quot-notes p { margin-bottom: 4px; }
+
+.quot-footer { background: #1a1a2e; color: #aaa; text-align: center; padding: 10px; font-size: 10px; letter-spacing: 1px; }
+
+.quot-cad { padding: 16px 28px; background: #f5f5f5; text-align: center; }
+.quot-cad img { max-width: 100%; max-height: 280px; border-radius: 6px; object-fit: contain; border: 1px solid #ddd; }
+.quot-cad p { font-size: 10px; color: #888; margin-top: 6px; }
+
+/* ── CAD image upload ── */
+.cad-upload { border: 2px dashed var(--border); border-radius: 7px; padding: 14px; text-align: center; cursor: pointer; position: relative; transition: all 0.2s; }
+.cad-upload:hover { border-color: var(--gold); }
+.cad-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.cad-upload img { max-height: 80px; object-fit: contain; border-radius: 4px; }
+.cad-upload strong { color: var(--gold-light); font-size: 12px; display: block; }
+.cad-upload p { color: var(--muted); font-size: 11px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 2px; }
+
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+/* ── Labor Client Rows ── */
+.labor-row td { padding: 5px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.labor-row input[type="text"]   { background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 5px 8px; font-size: 12px; width: 100%; outline: none; }
+.labor-row input[type="number"] { background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 5px 6px; font-size: 12px; width: 72px; outline: none; text-align: center; }
+.labor-row input:focus { border-color: var(--gold-dark); }
+.labor-row.selected td { background: rgba(201,168,76,0.08); }
+.labor-row.selected input { border-color: var(--gold-dark); }
+.labor-select-btn { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.labor-select-btn.active { background: var(--gold); border-color: var(--gold); }
+.labor-select-btn.active::after { content: '✓'; font-size: 11px; color: #000; font-weight: 700; }
+.labor-select-btn:not(.active)::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--border); display: block; margin: auto; }
+
+/* ── History Cards ── */
+.hist-group-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 10px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.hist-card { background: var(--card); border: 1px solid var(--border); border-radius: 7px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; transition: border-color 0.2s; }
+.hist-card:hover { border-color: var(--gold-dark); }
+.hist-card-info { flex: 1; min-width: 0; }
+.hist-card-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-card-meta  { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.hist-card-total { font-size: 12px; color: var(--gold); font-weight: 600; white-space: nowrap; }
+.hist-card-btns  { display: flex; gap: 6px; }
+.hist-btn { border: none; border-radius: 4px; padding: 5px 10px; font-size: 10px; cursor: pointer; letter-spacing: 1px; text-transform: uppercase; font-family: Inter,sans-serif; transition: opacity 0.2s; }
+.hist-btn:hover { opacity: 0.8; }
+.hist-btn.load   { background: rgba(201,168,76,0.15); color: var(--gold); border: 1px solid var(--gold-dark); }
+.hist-btn.del    { background: rgba(229,115,115,0.12); color: var(--red); border: 1px solid rgba(229,115,115,0.3); }
+.hist-empty { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-gem"></div>
+    <div>
+      <h1>JewelArtix</h1>
+      <span>Quotation Automation System</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <button onclick="toggleHistory()" id="historyBtn" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:1px;text-transform:uppercase;font-family:Inter,sans-serif;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+      🗂 History
+    </button>
+    <button onclick="manualSaveSettings()" id="settingsSaveBtn" style="background:var(--card);border:1px solid #2d6a2d;color:#90EE90;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:1px;text-transform:uppercase;font-family:Inter,sans-serif;transition:all 0.2s;" title="Save labor rates & Excel permanently">
+      💾 Save Settings
+    </button>
+    <div class="header-badge">USD • JewelArtix Quotation</div>
+  </div>
+</header>
+
+<div class="app">
+  <!-- ════ LEFT PANEL ════ -->
+  <div class="left-panel">
+
+    <!-- 1. Quotation Info -->
+    <div class="section">
+      <div class="section-title"><span class="num">1</span> Quotation Info</div>
+      <div class="two-col">
+        <div>
+          <label>Design No.</label>
+          <input type="text" id="designNo" placeholder="e.g. JJ_01">
+        </div>
+        <div>
+          <label>Quotation No.</label>
+          <input type="text" id="quotNo" placeholder="e.g. Q-2026-27-060">
+        </div>
+      </div>
+      <div class="two-col">
+        <div>
+          <label>Client Name</label>
+          <input type="text" id="clientName" placeholder="Client / Company">
+        </div>
+        <div>
+          <label>Date</label>
+          <input type="text" id="quotDate" id="quotDate">
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 2. Gold Rate (24kt input only) -->
+    <div class="section">
+      <div class="section-title"><span class="num">2</span> Gold Rate (24Kt Input)</div>
+      <label>24Kt Gold Price (USD/g)</label>
+      <input type="number" id="gold24" placeholder="e.g. 82.00" step="0.01" oninput="autoCalcGold()">
+
+      <!-- Live converted price cards -->
+      <div class="three-col" style="margin-top:10px;gap:6px;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">18Kt (AUTO)</div>
+          <div id="gold18" style="font-size:16px;font-weight:700;color:var(--gold);margin-top:3px;">—</div>
+          <div style="font-size:9px;color:var(--muted);">USD/g</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">14Kt (AUTO)</div>
+          <div id="gold14" style="font-size:16px;font-weight:700;color:var(--gold);margin-top:3px;">—</div>
+          <div style="font-size:9px;color:var(--muted);">USD/g</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">9Kt (AUTO)</div>
+          <div id="gold9" style="font-size:16px;font-weight:700;color:var(--gold);margin-top:3px;">—</div>
+          <div style="font-size:9px;color:var(--muted);">USD/g</div>
+        </div>
+      </div>
+      <div style="margin-top:6px;font-size:10px;color:var(--muted);padding:5px 8px;background:var(--surface);border-radius:4px;border-left:2px solid var(--gold-dark);">
+        9Kt×0.38 &nbsp;|&nbsp; 14Kt×0.59 &nbsp;|&nbsp; 18Kt×0.76 &nbsp;(from 24Kt)
+      </div>
+
+      <div style="margin-top:10px;">
+        <label>Gold Type</label>
+        <select id="goldType">
+          <option>White Gold</option>
+          <option>Yellow Gold</option>
+          <option>Rose Gold</option>
+        </select>
+      </div>
+
+      <!-- Weight Section -->
+      <div style="margin-top:14px; padding:12px; background:var(--card); border-radius:6px; border:1px solid var(--border);">
+        <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:10px;">⚖️ Weight (g)</div>
+
+        <label>Matrix 9Kt Weight (g)</label>
+        <input type="number" id="wMatrix9" placeholder="e.g. 7.90" step="0.01" oninput="autoCalcWeights()"
+          style="border-color:var(--gold-dark);">
+
+        <div style="margin-top:10px;font-size:10px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">Gold Weights (auto)</div>
+        <div class="three-col">
+          <div>
+            <label>9Kt <span style="color:var(--gold);font-size:9px;">−20%</span></label>
+            <input type="number" id="w9" placeholder="—" step="0.01" style="background:#111;color:var(--gold);" readonly>
+          </div>
+          <div>
+            <label>14Kt <span style="color:var(--gold);font-size:9px;">auto</span></label>
+            <input type="number" id="w14" placeholder="—" step="0.01" style="background:#111;color:var(--gold);" readonly>
+          </div>
+          <div>
+            <label>18Kt <span style="color:var(--gold);font-size:9px;">auto</span></label>
+            <input type="number" id="w18" placeholder="—" step="0.01" style="background:#111;color:var(--gold);" readonly>
+          </div>
+        </div>
+        <div style="margin-top:4px;font-size:10px;color:var(--muted);padding:5px 8px;background:var(--surface);border-radius:4px;border-left:2px solid var(--gold-dark);">
+          9Kt = Matrix×0.80 &nbsp;|&nbsp; 14Kt = 9Kt×1.1643 &nbsp;|&nbsp; 18Kt = 9Kt×1.3929
+        </div>
+
+        <!-- Silver & Platinum -->
+        <div style="margin-top:12px;font-size:10px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">Silver & Platinum (auto from 14Kt)</div>
+        <div class="two-col">
+          <div>
+            <label>Silver Weight <span style="color:var(--gold);font-size:9px;">auto</span></label>
+            <input type="number" id="wSilver" placeholder="—" step="0.01" style="background:#111;color:#aaa;" readonly>
+          </div>
+          <div>
+            <label>Platinum Weight <span style="color:var(--gold);font-size:9px;">auto</span></label>
+            <input type="number" id="wPlatinum" placeholder="—" step="0.01" style="background:#111;color:#e0e0e0;" readonly>
+          </div>
+        </div>
+        <div style="margin-top:4px;font-size:10px;color:var(--muted);padding:5px 8px;background:var(--surface);border-radius:4px;border-left:2px solid var(--border);">
+          Silver = 14Kt×(10.49/13.07) &nbsp;|&nbsp; Platinum = 14Kt×(21.45/13.07)
+        </div>
+
+        <div style="margin-top:10px;font-size:10px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">Silver & Platinum Price (manual)</div>
+        <div class="two-col">
+          <div>
+            <label>Silver Price (USD/g)</label>
+            <input type="number" id="silverPrice" placeholder="e.g. 0.85" step="0.01">
+          </div>
+          <div>
+            <label>Platinum Price (USD/g)</label>
+            <input type="number" id="platinumPrice" placeholder="e.g. 32.00" step="0.01">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 3. Labor Rates -->
+    <div class="section">
+      <div class="section-title">
+        <span class="num">3</span> Labor / Manufacturing
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button onclick="removeLaborRow()" style="background:rgba(229,115,115,0.15);border:1px solid rgba(229,115,115,0.3);color:var(--red);border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;" title="Remove last client">−</button>
+          <button onclick="addLaborRow()" style="background:rgba(201,168,76,0.15);border:1px solid var(--gold-dark);color:var(--gold);border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;" title="Add client">+</button>
+        </div>
+      </div>
+
+      <!-- Client labor table -->
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <tr>
+            <th style="text-align:left;padding:6px 8px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);width:36px;"></th>
+            <th style="text-align:left;padding:6px 8px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Client Name</th>
+            <th style="text-align:center;padding:6px 4px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);">18Kt</th>
+            <th style="text-align:center;padding:6px 4px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);">14Kt</th>
+            <th style="text-align:center;padding:6px 4px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);">9Kt</th>
+            <th style="text-align:center;padding:6px 4px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#aaa;">Silver</th>
+            <th style="text-align:center;padding:6px 4px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#e0e0e0;">Plat.</th>
+          </tr>
+          <tbody id="laborRows">
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:var(--muted);padding:5px 8px;background:var(--card);border-radius:4px;border-left:2px solid var(--gold-dark);">
+        ✦ Select a client row to use their labor rates in the quotation
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 4. Diamond Details -->
+    <div class="section">
+      <div class="section-title"><span class="num">4</span> Diamond Details</div>
+
+      <!-- Diamond Excel upload -->
+      <div style="margin-bottom:12px;">
+        <div class="upload-zone">
+          <input type="file" accept=".xlsx,.xls,.csv" onchange="loadDiamondExcel(this)">
+          <div class="icon">📊</div>
+          <strong>Upload Diamond Price List</strong>
+          <p>Columns: Shape | Size | Price (USD/ct)</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+          <div id="xlsStatus" style="flex:1;"></div>
+          <button id="removeExcelBtn" onclick="removeExcel()" style="display:none;background:rgba(229,115,115,0.12);border:1px solid rgba(229,115,115,0.3);color:var(--red);border-radius:5px;padding:4px 10px;cursor:pointer;font-size:11px;letter-spacing:1px;white-space:nowrap;">✕ Remove Excel</button>
+        </div>
+        <div style="margin-top:6px;font-size:10px;color:var(--muted);padding:5px 8px;background:var(--card);border-radius:4px;border-left:2px solid var(--gold-dark);">
+          Excel format: <strong style="color:var(--gold)">Shape</strong> | <strong style="color:var(--gold)">Size</strong> (e.g. 2.00×2.00) | <strong style="color:var(--gold)">Price</strong> (USD/ct)
+        </div>
+      </div>
+
+      <div class="d-header">
+        <span>Shape</span><span>Size (mm)</span><span>Qty</span><span>Carats</span><span>Price/ct</span><span>Stone Type</span><span></span>
+      </div>
+      <div id="dRows"></div>
+      <button class="btn-add" onclick="addDRow()">+ Add Diamond Type</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 5. CAD Image -->
+    <div class="section">
+      <div class="section-title"><span class="num">5</span> CAD / Design Image</div>
+      <div class="cad-upload" id="cadZone">
+        <input type="file" accept="image/*" onchange="handleCAD(this)">
+        <div id="cadPreview">
+          <div style="font-size:24px">🖼️</div>
+          <strong>Upload CAD / Render</strong>
+          <p>Shown at bottom of PDF quotation</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Metal Selector for PDF -->
+    <div class="section">
+      <div class="section-title" style="margin-bottom:10px;"><span class="num">6</span> Select Metals for PDF Output</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <label id="chk-label-9"   style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;transition:all 0.2s;">
+          <input type="checkbox" id="chk9"   checked onchange="updateMetalChk('9')"   style="accent-color:var(--gold);width:15px;height:15px;">
+          <span style="font-size:12px;font-weight:600;color:var(--gold);">9Kt Gold</span>
+        </label>
+        <label id="chk-label-14"  style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;transition:all 0.2s;">
+          <input type="checkbox" id="chk14"  checked onchange="updateMetalChk('14')"  style="accent-color:var(--gold);width:15px;height:15px;">
+          <span style="font-size:12px;font-weight:600;color:var(--gold);">14Kt Gold</span>
+        </label>
+        <label id="chk-label-18"  style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;transition:all 0.2s;">
+          <input type="checkbox" id="chk18"  checked onchange="updateMetalChk('18')"  style="accent-color:var(--gold);width:15px;height:15px;">
+          <span style="font-size:12px;font-weight:600;color:var(--gold);">18Kt Gold</span>
+        </label>
+        <label id="chk-label-silver" style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;transition:all 0.2s;">
+          <input type="checkbox" id="chkSilver" onchange="updateMetalChk('silver')" style="accent-color:var(--gold);width:15px;height:15px;">
+          <span style="font-size:12px;font-weight:600;color:#aaa;">Silver</span>
+        </label>
+        <label id="chk-label-plat" style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;transition:all 0.2s;">
+          <input type="checkbox" id="chkPlat" onchange="updateMetalChk('plat')" style="accent-color:var(--gold);width:15px;height:15px;">
+          <span style="font-size:12px;font-weight:600;color:#e0e0e0;">Platinum</span>
+        </label>
+      </div>
+      <div style="margin-top:6px;font-size:10px;color:var(--muted);padding:5px 8px;background:var(--card);border-radius:4px;border-left:2px solid var(--gold-dark);">
+        ✦ Only selected metals will appear in PDF output
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="btn-generate" onclick="buildQuotation()">✦ Generate Quotation Preview</button>
+    <button class="btn-generate" onclick="saveQuotation()" style="margin-top:8px;background:linear-gradient(135deg,#1a3a1a,#2d6a2d);border:1px solid #2d6a2d;color:#90EE90;">💾 Save Quotation</button>
+
+  </div><!-- end left-panel -->
+
+  <!-- ════ RIGHT PANEL ════ -->
+  <div class="right-panel">
+
+    <!-- History Drawer -->
+    <div id="historyDrawer" style="display:none;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;">📋 Saved Quotations</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="clearAllHistory()" style="font-size:10px;color:var(--red);background:none;border:1px solid rgba(229,115,115,0.3);border-radius:4px;padding:3px 8px;cursor:pointer;">Clear All</button>
+          <button onclick="toggleHistory()" style="font-size:10px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 8px;cursor:pointer;">✕ Close</button>
+        </div>
+      </div>
+      <div id="historyList"></div>
+    </div>
+
+    <div id="quotPreview">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:var(--muted);text-align:center;gap:12px;">
+        <div style="font-size:48px;opacity:0.3">💎</div>
+        <div style="font-size:14px;color:var(--muted)">Fill in the details and click<br><strong style="color:var(--gold)">Generate Quotation Preview</strong></div>
+      </div>
+    </div>
+  </div>
+</div><!-- end app -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let cadBase64 = null, cadMime = null;
+let jewelPhotoBase64 = null, jewelPhotoMime = null;
+let dRowCount = 0;
+let diamondPriceList = []; // [{shape, size, price}]
+
+// ── Custom shape/stone toggle ──────────────────────────────────
+function toggleCustomStone(id) {
+  const sel = document.getElementById(`dst-${id}`);
+  const inp = document.getElementById(`dst-custom-${id}`);
+  if (!inp) return;
+  inp.style.display = sel?.value === 'Custom' ? 'block' : 'none';
+}
+
+function toggleCustomShape(id) {
+  const sel = document.getElementById(`dsh-${id}`);
+  const inp = document.getElementById(`dsh-custom-${id}`);
+  if (!inp) return;
+  inp.style.display = sel?.value === 'Custom' ? 'block' : 'none';
+}
+
+// ── Shape type helpers — MUST be before addDRow() call ─────────
+const DUAL_SHAPES = ['oval','pear','marquise','emerald','baguette'];
+function isDual(shape) { return DUAL_SHAPES.some(s => shape.toLowerCase().includes(s)); }
+
+// ── Init ───────────────────────────────────────────────────────
+document.getElementById('quotDate').value = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+addDRow();
+
+// ── Labor Client Rows ──────────────────────────────────────────
+let selectedLaborClient = 0;
+let laborRowCount = 0;
+let laborRowIds = []; // track order of row ids
+
+function addLaborRow() {
+  const id = laborRowCount++;
+  laborRowIds.push(id);
+  const isFirst = laborRowIds.length === 1;
+  const tbody = document.getElementById('laborRows');
+  const tr = document.createElement('tr');
+  tr.className = 'labor-row' + (isFirst ? ' selected' : '');
+  tr.id = `lr-${id}`;
+  tr.innerHTML = `
+    <td>
+      <button class="labor-select-btn ${isFirst?'active':''}" id="lbtn-${id}"
+        onclick="selectLaborClient(${id})" title="Use this client's rates"></button>
+    </td>
+    <td><input type="text"   id="lname-${id}" placeholder="Client name" style="min-width:100px;"></td>
+    <td><input type="number" id="l18-${id}"   placeholder="—" step="0.01"></td>
+    <td><input type="number" id="l14-${id}"   placeholder="—" step="0.01"></td>
+    <td><input type="number" id="l9-${id}"    placeholder="—" step="0.01"></td>
+    <td><input type="number" id="lsilver-${id}" placeholder="—" step="0.01"></td>
+    <td><input type="number" id="lplat-${id}"   placeholder="—" step="0.01"></td>
+  `;
+  tbody.appendChild(tr);
+  // Auto-select if first
+  if (isFirst) selectedLaborClient = id;
+}
+
+function removeLaborRow() {
+  if (laborRowIds.length <= 1) return; // keep at least 1
+  const id = laborRowIds.pop();
+  document.getElementById(`lr-${id}`)?.remove();
+  // If we removed the selected one, select the new last
+  if (selectedLaborClient === id) {
+    const newId = laborRowIds[laborRowIds.length - 1];
+    selectLaborClient(newId);
+  }
+}
+
+function selectLaborClient(id) {
+  selectedLaborClient = id;
+  laborRowIds.forEach(rid => {
+    document.getElementById(`lr-${rid}`)?.classList.toggle('selected', rid === id);
+    document.getElementById(`lbtn-${rid}`)?.classList.toggle('active', rid === id);
+  });
+}
+
+function getSelectedLabor() {
+  const id = selectedLaborClient;
+  return {
+    name: document.getElementById(`lname-${id}`)?.value?.trim() || 'Client',
+    l18:     parseFloat(document.getElementById(`l18-${id}`)?.value)     || 0,
+    l14:     parseFloat(document.getElementById(`l14-${id}`)?.value)     || 0,
+    l9:      parseFloat(document.getElementById(`l9-${id}`)?.value)      || 0,
+    lsilver: parseFloat(document.getElementById(`lsilver-${id}`)?.value) || 0,
+    lplat:   parseFloat(document.getElementById(`lplat-${id}`)?.value)   || 0,
+  };
+}
+
+// Start with 1 row
+addLaborRow();
+setTimeout(autoRestoreForm, 80);
+
+// ── Metal selector ────────────────────────────────────────────
+function updateMetalChk(metal) {
+  const map = { '9':'chk-label-9','14':'chk-label-14','18':'chk-label-18','silver':'chk-label-silver','plat':'chk-label-plat' };
+  const id = map[metal]; if (!id) return;
+  const chkId = metal==='9'?'chk9':metal==='14'?'chk14':metal==='18'?'chk18':metal==='silver'?'chkSilver':'chkPlat';
+  const checked = document.getElementById(chkId)?.checked;
+  const label   = document.getElementById(id);
+  if (label) {
+    label.style.borderColor  = checked ? 'var(--gold-dark)' : 'var(--border)';
+    label.style.background   = checked ? 'rgba(201,168,76,0.08)' : 'var(--card)';
+  }
+}
+
+function getMetalSelection() {
+  return {
+    show9:      document.getElementById('chk9')?.checked      ?? true,
+    show14:     document.getElementById('chk14')?.checked     ?? true,
+    show18:     document.getElementById('chk18')?.checked     ?? true,
+    showSilver: document.getElementById('chkSilver')?.checked ?? false,
+    showPlat:   document.getElementById('chkPlat')?.checked   ?? false,
+  };
+}
+
+// ── Gold Auto-Calc ─────────────────────────────────────────────
+function autoCalcGold() {
+  const g24 = parseFloat(document.getElementById('gold24').value) || 0;
+  const g18 = +(g24 * 0.76).toFixed(2);
+  const g14 = +(g24 * 0.59).toFixed(2);
+  const g9  = +(g24 * 0.38).toFixed(2);
+  document.getElementById('gold18').textContent = g24 ? g18 : '—';
+  document.getElementById('gold14').textContent = g24 ? g14 : '—';
+  document.getElementById('gold9').textContent  = g24 ? g9  : '—';
+}
+
+// ── Weight Auto-Calc from Matrix 9kt ─────────────────────────
+function autoCalcWeights() {
+  const wMatrix = parseFloat(document.getElementById('wMatrix9').value) || 0;
+  const w9  = +(wMatrix * 0.80).toFixed(2);
+  const w14 = +(w9 * (1.63 / 1.40)).toFixed(2);
+  const w18 = +(w9 * (1.95 / 1.40)).toFixed(2);
+  // Silver & Platinum from 14kt weight
+  const wSilver   = +(w14 * (10.49 / 13.07)).toFixed(2);
+  const wPlatinum = +(w14 * (21.45 / 13.07)).toFixed(2);
+  document.getElementById('w9').value        = wMatrix ? w9        : '';
+  document.getElementById('w14').value       = wMatrix ? w14       : '';
+  document.getElementById('w18').value       = wMatrix ? w18       : '';
+  document.getElementById('wSilver').value   = wMatrix ? wSilver   : '';
+  document.getElementById('wPlatinum').value = wMatrix ? wPlatinum : '';
+}
+
+// ── Diamond Rows ───────────────────────────────────────────────
+function addDRow(prefill = {}) {
+  dRowCount++;
+  const id = dRowCount;
+  const shape = (prefill.shape || 'Round').trim();
+  const dual  = isDual(shape);
+
+  // Normalize shape to match dropdown options exactly
+  const shapeMap = {
+    'round':'Round','princess':'Princess','oval':'Oval',
+    'marquise':'Marquise','pear':'Pear','emerald':'Emerald',
+    'cushion square':'Cushion Square','cushion':'Cushion Square',
+    'baguette':'Baguette','heart':'Heart'
+  };
+  const shapeLower = shape.toLowerCase();
+  let matchedShape = 'Round';
+  for (const [key, val] of Object.entries(shapeMap)) {
+    if (shapeLower.includes(key) || key.includes(shapeLower)) { matchedShape = val; break; }
+  }
+
+  const div = document.createElement('div');
+  div.id  = `dr-${id}`;
+  div.className = 'd-row';
+
+  const sizeHTML = dual
+    ? `<div class="d-size-dual">
+        <input type="number" id="ds1-${id}" placeholder="W" step="0.01" value="${prefill.sizeW||''}" oninput="onSizeChange(${id})" style="padding:7px 5px;font-size:12px;">
+        <span>×</span>
+        <input type="number" id="ds2-${id}" placeholder="H" step="0.01" value="${prefill.sizeH||''}" oninput="onSizeChange(${id})" style="padding:7px 5px;font-size:12px;">
+       </div>`
+    : `<div class="d-size-single">
+        <input type="number" id="ds1-${id}" placeholder="mm" step="0.01" value="${prefill.sizeW||''}" oninput="onSizeChange(${id})" style="width:100%;padding:7px 8px;font-size:12px;">
+        <input type="hidden" id="ds2-${id}" value="">
+       </div>`;
+
+  const opts = ['Round','Princess','Oval','Marquise','Pear','Emerald','Cushion Square','Baguette','Heart','Custom']
+    .map(o => `<option value="${o}"${o===matchedShape?' selected':''}>${o==='Custom'?'Custom...':o}</option>`).join('');
+
+  const isCustomShape = matchedShape === 'Custom' || (prefill.customShape && !['Round','Princess','Oval','Marquise','Pear','Emerald','Cushion Square','Baguette','Heart'].includes(prefill.shape));
+
+  div.innerHTML = `
+    <div class="d-row-grid${dual?' dual':''}">
+      <div>
+        <select id="dsh-${id}" onchange="onShapeChange(${id});toggleCustomShape(${id})" style="font-size:12px;padding:7px 5px;">${opts}</select>
+        <input type="text" id="dsh-custom-${id}" placeholder="Type shape..." 
+          style="display:${isCustomShape?'block':'none'};width:100%;font-size:11px;padding:4px 6px;margin-top:3px;"
+          value="${isCustomShape?(prefill.shape||''):''}">
+      </div>
+      <div id="dsz-${id}">${sizeHTML}</div>
+      <div><input type="number" id="dq-${id}"  placeholder="0"     min="0"    value="${prefill.qty||''}"    style="font-size:12px;padding:7px 5px;"></div>
+      <div><input type="number" id="dc-${id}"  placeholder="0.000" step="0.001" value="${prefill.carats||''}" style="font-size:12px;padding:7px 5px;"></div>
+      <div><input type="number" id="dp-${id}"  placeholder="—"     step="0.01"  value="${prefill.price||''}"  style="font-size:12px;padding:7px 5px;" class="${prefill.price?'price-auto':'price-manual'}"></div>
+      <div>
+        <select id="dst-${id}" style="font-size:11px;padding:6px 3px;width:100%;" onchange="toggleCustomStone(${id})">
+          <option value="Natural"${(prefill.stoneType||'Natural')==='Natural'?' selected':''}>Natural</option>
+          <option value="Lab Grown"${prefill.stoneType==='Lab Grown'?' selected':''}>Lab Grown</option>
+          <option value="HPHT"${prefill.stoneType==='HPHT'?' selected':''}>HPHT</option>
+          <option value="Moissanite"${prefill.stoneType==='Moissanite'?' selected':''}>Moissanite</option>
+          <option value="AD"${prefill.stoneType==='AD'?' selected':''}>AD</option>
+          <option value="CZ"${prefill.stoneType==='CZ'?' selected':''}>CZ</option>
+          <option value="Custom"${(prefill.stoneType&&!['Natural','Lab Grown','HPHT','Moissanite','AD','CZ'].includes(prefill.stoneType))?' selected':''}>Custom...</option>
+        </select>
+        <input type="text" id="dst-custom-${id}" placeholder="Type stone type..."
+          style="display:${(prefill.stoneType&&!['Natural','Lab Grown','HPHT','Moissanite','AD','CZ'].includes(prefill.stoneType))?'block':'none'};width:100%;font-size:11px;padding:4px 6px;margin-top:3px;"
+          value="${(['Natural','Lab Grown','HPHT','Moissanite','AD','CZ'].includes(prefill.stoneType||'Natural'))?'':(prefill.stoneType||'')}">
+      </div>
+      <button class="btn-rm" onclick="document.getElementById('dr-${id}').remove()" title="Remove">✕</button>
+    </div>`;
+
+  document.getElementById('dRows').appendChild(div);
+}
+
+// ── When shape changes, rebuild size inputs ────────────────────
+function onShapeChange(id) {
+  const shape = document.getElementById(`dsh-${id}`).value;
+  const dual  = isDual(shape);
+  const container = document.getElementById(`dsz-${id}`);
+  const grid = container.closest('.d-row-grid');
+  grid.classList.toggle('dual', dual);
+
+  if (dual) {
+    container.innerHTML = `<div class="d-size-dual">
+      <input type="number" id="ds1-${id}" placeholder="W" step="0.01" oninput="onSizeChange(${id})" style="padding:7px 5px;font-size:12px;">
+      <span>×</span>
+      <input type="number" id="ds2-${id}" placeholder="H" step="0.01" oninput="onSizeChange(${id})" style="padding:7px 5px;font-size:12px;">
+    </div>`;
+  } else {
+    container.innerHTML = `<div class="d-size-single">
+      <input type="number" id="ds1-${id}" placeholder="mm" step="0.01" oninput="onSizeChange(${id})" style="width:100%;padding:7px 8px;font-size:12px;">
+      <input type="hidden" id="ds2-${id}" value="">
+    </div>`;
+  }
+  // Clear price when shape changes
+  const priceEl = document.getElementById(`dp-${id}`);
+  priceEl.value = '';
+  priceEl.className = 'price-manual';
+}
+
+// ── When size changes, auto-lookup price ───────────────────────
+function onSizeChange(id) {
+  const shape = document.getElementById(`dsh-${id}`)?.value || '';
+  const w = document.getElementById(`ds1-${id}`)?.value || '';
+  const h = document.getElementById(`ds2-${id}`)?.value || '';
+  if (!w) return;
+  const sizeStr = isDual(shape) ? `${w}x${h}` : `${w}x${w}`;
+  const price = lookupDiamondPrice(shape, sizeStr);
+  const priceEl = document.getElementById(`dp-${id}`);
+  if (price) {
+    priceEl.value = price;
+    priceEl.className = 'price-auto';
+    priceEl.title = 'Price from Excel — editable';
+  } else {
+    // Only clear if it was auto-filled before, don't wipe manual entry
+    if (priceEl.className === 'price-auto') {
+      priceEl.value = '';
+      priceEl.className = 'price-manual';
+      priceEl.title = 'Not found in Excel — enter manually';
+    }
+  }
+}
+
+// ── Tab Switch (3 tabs) ────────────────────────────────────────
+function switchTab(t) {
+  ['manual','paste','photo'].forEach(name => {
+    document.getElementById(`${name}Tab`).style.display = t===name ? '' : 'none';
+    const btn = document.getElementById(`tab-${name}`);
+    if (btn) btn.classList.toggle('active', t===name);
+  });
+}
+
+// ── Diamond Excel Loader ───────────────────────────────────────
+function loadDiamondExcel(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+      const SHAPES = ['round','oval','pear','marquise','cushion','princess','emerald','baguette','heart'];
+
+      // Find first data row (col A = shape name)
+      let dataStart = -1;
+      for (let i = 0; i < raw.length; i++) {
+        const a = (raw[i][0]||'').toString().toLowerCase().trim();
+        if (SHAPES.some(s => a === s || a.startsWith(s))) { dataStart = i; break; }
+      }
+      if (dataStart < 0) {
+        document.getElementById('xlsStatus').innerHTML =
+          `<div class="badge err">✗ Shape not found in Column A</div>`; return;
+      }
+
+      // Detect format by headers above data
+      const headerText = raw.slice(0, dataStart).map(r =>
+        r.map(c=>(c||'').toString().toLowerCase()).join(' ')
+      ).join(' ');
+      const is4Col = headerText.includes('width') && headerText.includes('height');
+
+      diamondPriceList = [];
+
+      for (let i = dataStart; i < raw.length; i++) {
+        const r = raw[i];
+        if (!r || !r[0]) continue;
+        const shape = (r[0]||'').toString().toLowerCase().trim();
+        if (!SHAPES.some(s => shape === s || shape.startsWith(s))) continue;
+
+        if (is4Col) {
+          // 4-col format: A=Shape B=WFrom C=WTo D=HFrom E=HTo F=SzFrom G=SzTo H=Price
+          const wFrom=parseFloat(r[1])||0, wTo=parseFloat(r[2])||0;
+          const hFrom=parseFloat(r[3])||0, hTo=parseFloat(r[4])||0;
+          const price=parseFloat(r[7])||0;
+          if (wFrom===0 && wTo===0) continue;
+          diamondPriceList.push({ shape, wFrom, wTo, hFrom, hTo, size:'', price, mode:'4col' });
+        } else {
+          // Exact format: A=Shape B=Size(WxH) C=Price
+          const size  = normalizeSize((r[1]||'').toString());
+          const price = parseFloat(r[2])||0;
+          if (!size || size==='') continue;
+          diamondPriceList.push({ shape, wFrom:0, wTo:0, hFrom:0, hTo:0, size, price, mode:'exact' });
+        }
+      }
+
+      if (!diamondPriceList.length) {
+        document.getElementById('xlsStatus').innerHTML =
+          `<div class="badge err">✗ No data rows found</div>`; return;
+      }
+
+      const withPrice = diamondPriceList.filter(r => r.price > 0).length;
+      const noPrice   = diamondPriceList.length - withPrice;
+      const fmt       = is4Col ? 'W×H range' : 'exact size';
+      let msg = `✓ ${diamondPriceList.length} records (${fmt})`;
+      if (noPrice === diamondPriceList.length) msg += ` — ⚠ Fill Price column`;
+      else if (noPrice > 0) msg += ` — ${withPrice} priced, ${noPrice} empty`;
+      else msg += ` — all ${withPrice} priced ✓`;
+
+      document.getElementById('xlsStatus').innerHTML =
+        `<div class="badge ${withPrice>0?'ok':'info'}">${msg}</div>`;
+
+    } catch(err) {
+      document.getElementById('xlsStatus').innerHTML =
+        `<div class="badge err">✗ ${err.message}</div>`;
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ── Normalize size string ──────────────────────────────────────
+function normalizeSize(s) {
+  return s.toString().toLowerCase().trim()
+    .replace(/×/g,'x').replace(/\s/g,'').replace(/x+/g,'x');
+}
+
+// ── Lookup price — NO FALLBACK, exact match only ───────────────
+function lookupDiamondPrice(shape, sizeRaw) {
+  if (!diamondPriceList.length) return null;
+  const sh    = shape.toLowerCase().trim();
+  const sz    = normalizeSize(sizeRaw);
+  const parts = sz.split('x');
+  const w     = parseFloat(parts[0]) || 0;
+  const h     = parseFloat(parts[1]) || w;
+
+  // Filter by shape
+  const shapeRows = diamondPriceList.filter(r =>
+    r.shape === sh || r.shape.includes(sh) || sh.includes(r.shape)
+  );
+  if (!shapeRows.length) return null;
+  const pricedRows = shapeRows.filter(r => r.price > 0);
+  if (!pricedRows.length) return null;
+
+  // ── 1. Exact range match ───────────────────────────────────
+  const rows4 = pricedRows.filter(r => r.mode === '4col');
+  if (rows4.length) {
+    const match = rows4.find(r =>
+      w >= r.wFrom && w <= r.wTo && h >= r.hFrom && h <= r.hTo
+    );
+    if (match) return match.price;
+  }
+  const rows2 = pricedRows.filter(r => r.mode === '2range');
+  if (rows2.length) {
+    const dim   = Math.max(w, h);
+    const match = rows2.find(r => dim >= r.wFrom && dim <= r.wTo);
+    if (match) return match.price;
+  }
+  const rowsEx = pricedRows.filter(r => r.mode === 'exact');
+  for (const row of rowsEx) {
+    const p=row.size.split('x'), rw=parseFloat(p[0])||0, rh=parseFloat(p[1])||rw;
+    if (Math.abs(rw-w)<=0.15 && Math.abs(rh-h)<=0.15) return row.price;
+  }
+
+  // ── 2. No exact match — check if EITHER W or H within overall bounds ──
+  let wMin=999, wMax=0, hMin=999, hMax=0;
+  pricedRows.forEach(r => {
+    if (r.mode==='4col'||r.mode==='2range') {
+      wMin=Math.min(wMin,r.wFrom); wMax=Math.max(wMax,r.wTo);
+      hMin=Math.min(hMin,r.hFrom); hMax=Math.max(hMax,r.hTo);
+    } else {
+      const p=r.size.split('x'), rw=parseFloat(p[0])||0, rh=parseFloat(p[1])||rw;
+      wMin=Math.min(wMin,rw); wMax=Math.max(wMax,rw);
+      hMin=Math.min(hMin,rh); hMax=Math.max(hMax,rh);
+    }
+  });
+
+  const wIn = w >= wMin && w <= wMax;
+  const hIn = h >= hMin && h <= hMax;
+
+  // If EITHER dimension within bounds → return average of this shape's prices
+  if (wIn || hIn) {
+    const avg = pricedRows.reduce((s,r) => s+r.price, 0) / pricedRows.length;
+    return Math.round(avg * 100) / 100;
+  }
+
+  // Both outside bounds → empty, manual entry
+  return null;
+}
+
+// ── Parse Paste Data ───────────────────────────────────────────
+function parsePasteData() {
+  const raw = document.getElementById('pasteInput').value.trim();
+  if (!raw) {
+    document.getElementById('pasteStatus').innerHTML = `<div class="badge err">✗ Nothing pasted</div>`; return;
+  }
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Detect header to find column order
+  const headerLine = lines[0].toLowerCase();
+  const hasHeader  = headerLine.includes('shape');
+  const start      = hasHeader ? 1 : 0;
+
+  // Detect if Qty column exists (4 columns vs 3)
+  // Header: Shape,Size,Qty,Carat  OR  Shape,Size,Carat
+  const headerParts = hasHeader ? lines[0].split(',').map(h=>h.trim().toLowerCase()) : [];
+  const qtyColIdx   = headerParts.findIndex(h => h.includes('qty') || h.includes('quantity') || h.includes('pcs') || h.includes('count'));
+  const caratColIdx = headerParts.findIndex(h => h.includes('carat') || h.includes('ct') || h.includes('weight'));
+  const hasQtyCol   = qtyColIdx > -1;
+
+  const parsed = [];
+
+  for (let i = start; i < lines.length; i++) {
+    const firstComma = lines[i].indexOf(',');
+    if (firstComma === -1) continue;
+    const shape = lines[i].substring(0, firstComma).trim();
+    const rest  = lines[i].substring(firstComma + 1);
+
+    // Split remaining by comma
+    const restParts = rest.split(',').map(p => p.trim());
+    if (restParts.length < 2) continue;
+
+    const size = normalizeSize(restParts[0]);
+
+    let qty = 0, carats = 0;
+
+    if (hasQtyCol || restParts.length >= 3) {
+      // Format: Size, Qty, Carat
+      qty    = parseInt(restParts[1])   || 0;
+      carats = parseFloat(restParts[2]) || 0;
+    } else {
+      // Format: Size, Carat (no qty)
+      qty    = 0;
+      carats = parseFloat(restParts[1]) || 0;
+    }
+
+    if (!shape || !size) continue;
+    const sizeParts = size.split('x');
+    const sizeW = sizeParts[0] || '';
+    const sizeH = sizeParts[1] || sizeW;
+    const price = lookupDiamondPrice(shape, size);
+    parsed.push({ shape, size, sizeW, sizeH, qty, carats, price });
+  }
+
+  if (!parsed.length) {
+    document.getElementById('pasteStatus').innerHTML =
+      `<div class="badge err">✗ No valid rows — check format: Shape,Size,Qty,Carat or Shape,Size,Carat</div>`; return;
+  }
+
+  switchTab('manual');
+
+  setTimeout(() => {
+    document.getElementById('dRows').innerHTML = '';
+    dRowCount = 0;
+    let matched = 0;
+    parsed.forEach(d => {
+      addDRow({
+        shape:     d.shape,
+        sizeW:     d.sizeW,
+        sizeH:     isDual(d.shape) ? d.sizeH : '',
+        qty:       d.qty,
+        carats:    d.carats,
+        price:     d.price || '',
+        stoneType: 'Natural'
+      });
+      if (d.price) matched++;
+    });
+    const noPrice = parsed.length - matched;
+    document.getElementById('pasteStatus').innerHTML =
+      `<div class="badge ok">✓ ${parsed.length} rows added${matched ? ` — ${matched} prices auto-filled` : ''}${noPrice ? ` — <span style="color:var(--gold)">${noPrice} need price</span>` : ''}</div>`;
+    document.getElementById('dRows').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 50);
+}
+
+// ── Jewelry Photo ──────────────────────────────────────────────
+function handleJewelPhoto(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    jewelPhotoBase64 = e.target.result.split(',')[1];
+    jewelPhotoMime = file.type;
+    document.getElementById('photoPreview').innerHTML = `<img src="${e.target.result}" alt="Jewelry">`;
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('photoStatus').innerHTML = `<div class="badge info">✓ Ready — click Analyze</div>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzePhoto() {
+  if (!jewelPhotoBase64) return;
+  document.getElementById('aiSpinner').style.display = '';
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('photoStatus').innerHTML = '';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6', max_tokens:1000,
+        messages:[{ role:'user', content:[
+          { type:'image', source:{ type:'base64', media_type:jewelPhotoMime||'image/jpeg', data:jewelPhotoBase64 }},
+          { type:'text', text:`Analyze this jewelry image. Identify ALL diamond/stone groups. For each group estimate: size (mm diameter), shape (Round/Princess/Oval/Marquise/Pear/Emerald/Cushion/Baguette/Heart), quantity count, total carats.
+Respond ONLY as raw JSON array, no backticks, no explanation:
+[{"size":"2.0","shape":"Round","qty":10,"carats":0.30}]
+If no stones visible return: []` }
+        ]}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.find(c=>c.type==='text')?.text || '[]';
+    let diamonds; try { diamonds = JSON.parse(text.replace(/```json|```/g,'').trim()); } catch { diamonds=[]; }
+    document.getElementById('aiSpinner').style.display = 'none';
+    if (!Array.isArray(diamonds)||!diamonds.length) {
+      document.getElementById('photoStatus').innerHTML = `<div class="badge err">✗ No diamonds detected — enter manually</div>`;
+      document.getElementById('analyzeBtn').disabled = false;
+      return;
+    }
+    switchTab('manual');
+    document.getElementById('dRows').innerHTML = ''; dRowCount = 0;
+    diamonds.forEach(d => {
+      const sz = normalizeSize(d.size || d.size_mm || '');
+      const parts = sz.split('x');
+      const price = lookupDiamondPrice(d.shape||'Round', sz);
+      addDRow({
+        shape:  d.shape || 'Round',
+        sizeW:  parts[0] || '',
+        sizeH:  parts[1] || '',
+        qty:    d.qty || '',
+        carats: d.carats || '',
+        price:  price || ''
+      });
+    });
+    document.getElementById('photoStatus').innerHTML = `<div class="badge ok">✓ ${diamonds.length} group(s) detected — check Manual tab</div>`;
+    document.getElementById('analyzeBtn').disabled = false;
+  } catch(err) {
+    document.getElementById('aiSpinner').style.display='none';
+    document.getElementById('analyzeBtn').disabled=false;
+    document.getElementById('photoStatus').innerHTML=`<div class="badge err">✗ ${err.message}</div>`;
+  }
+}
+
+// ── CAD Image ──────────────────────────────────────────────────
+function handleCAD(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    cadBase64 = e.target.result;
+    cadMime = file.type;
+    document.getElementById('cadPreview').innerHTML = `<img src="${e.target.result}" alt="CAD"><br><span style="color:var(--gold);font-size:11px;">✓ CAD loaded</span>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Collect Diamonds ───────────────────────────────────────────
+function collectDiamonds() {
+  const rows = [];
+  document.querySelectorAll('[id^="dr-"]').forEach(el => {
+    const id     = el.id.replace('dr-','');
+    const shape  = (() => {
+      const sel = document.getElementById(`dsh-${id}`)?.value || 'Round';
+      if (sel === 'Custom') return document.getElementById(`dsh-custom-${id}`)?.value || 'Custom';
+      return sel;
+    })();
+    const w      = document.getElementById(`ds1-${id}`)?.value || '';
+    const h      = document.getElementById(`ds2-${id}`)?.value || '';
+    const qty    = parseInt(document.getElementById(`dq-${id}`)?.value)  || 0;
+    const carats = parseFloat(document.getElementById(`dc-${id}`)?.value) || 0;
+    const price     = parseFloat(document.getElementById(`dp-${id}`)?.value) || 0;
+    const stoneType = (() => {
+      const sel = document.getElementById(`dst-${id}`)?.value || 'Natural';
+      if (sel === 'Custom') return document.getElementById(`dst-custom-${id}`)?.value || 'Custom';
+      return sel;
+    })();
+    // Build display size string
+    const size = isDual(shape)
+      ? (w && h ? `${w}×${h}` : w || h || '—')
+      : (w ? `${w}` : '—');
+    if (carats > 0) {
+      rows.push({ shape, size, qty, carats, price, stoneType, cost: price * carats });
+    }
+  });
+  return rows;
+}
+
+// ── Format ────────────────────────────────────────────────────
+const fmt = n => n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+// ── Build Quotation ────────────────────────────────────────────
+function buildQuotation() {
+  try {
+  const g24 = parseFloat(document.getElementById('gold24').value)||0;
+  if (!g24) { alert('Enter 24Kt gold price first.'); return; }
+
+  const g18 = parseFloat(document.getElementById('gold18').textContent)||0;
+  const g14 = parseFloat(document.getElementById('gold14').textContent)||0;
+  const g9  = parseFloat(document.getElementById('gold9').textContent)||0;
+  const goldType = document.getElementById('goldType').value;
+  const w18 = parseFloat(document.getElementById('w18').value)||0;
+  const w14 = parseFloat(document.getElementById('w14').value)||0;
+  const w9  = parseFloat(document.getElementById('w9').value)||0;
+
+  // Silver & Platinum weights
+  const wSilver   = parseFloat(document.getElementById('wSilver').value)||0;
+  const wPlatinum = parseFloat(document.getElementById('wPlatinum').value)||0;
+  const silverPrice   = parseFloat(document.getElementById('silverPrice').value)||0;
+  const platinumPrice = parseFloat(document.getElementById('platinumPrice').value)||0;
+
+  // Get selected client's labor rates
+  const labor = getSelectedLabor();
+  const l18 = labor.l18, l14 = labor.l14, l9 = labor.l9;
+  const lsilver = labor.lsilver||0, lplat = labor.lplat||0;
+  const laborClientName = labor.name;
+
+  const designNo    = document.getElementById('designNo').value||'—';
+  const quotNo      = document.getElementById('quotNo').value||'—';
+  const clientName  = document.getElementById('clientName').value||'—';
+  const quotDate    = document.getElementById('quotDate').value||'—';
+
+  // Calculations per karat
+  const gold18amt = g18 * w18, gold14amt = g14 * w14, gold9amt = g9 * w9;
+  const silverAmt   = silverPrice   * wSilver;
+  const platinumAmt = platinumPrice * wPlatinum;
+  const labor18amt = l18 * w18, labor14amt = l14 * w14, labor9amt = l9 * w9;
+  const laborSilverAmt   = lsilver * wSilver;
+  const laborPlatinumAmt = lplat   * wPlatinum;
+  const diamonds = collectDiamonds();
+  const totalDiamondCost = diamonds.reduce((s,d)=>s+d.cost,0);
+
+  // Totals
+  const total9       = gold9amt       + totalDiamondCost + labor9amt;
+  const total14      = gold14amt      + totalDiamondCost + labor14amt;
+  const total18      = gold18amt      + totalDiamondCost + labor18amt;
+  const totalSilver  = silverAmt      + totalDiamondCost + laborSilverAmt;
+  const totalPlat    = platinumAmt    + totalDiamondCost + laborPlatinumAmt;
+
+  // Store for PDF
+  window._Q = { g18,g14,g9,goldType,w18,w14,w9,wSilver,wPlatinum,silverPrice,platinumPrice,
+    l18,l14,l9,lsilver,lplat,gold18amt,gold14amt,gold9amt,silverAmt,platinumAmt,
+    labor18amt,labor14amt,labor9amt,laborSilverAmt,laborPlatinumAmt,
+    diamonds,totalDiamondCost,total9,total14,total18,totalSilver,totalPlat,
+    designNo,quotNo,clientName,quotDate,laborClientName };
+
+  // ── Build HTML Preview ──
+  // Get metal selection
+  const ms = getMetalSelection();
+
+  // Summary columns — only selected metals
+  const showSilver = ms.showSilver && wSilver > 0 && silverPrice > 0;
+  const showPlat   = ms.showPlat   && wPlatinum > 0 && platinumPrice > 0;
+
+  let goldRows = '';
+  if (ms.show9  && w9)        goldRows += `<tr><td>9Kt ${goldType}</td><td>${w9}</td><td>${fmt(g9)}</td><td>${fmt(gold9amt)}</td></tr>`;
+  if (ms.show14 && w14)       goldRows += `<tr><td>14Kt ${goldType}</td><td>${w14}</td><td>${fmt(g14)}</td><td>${fmt(gold14amt)}</td></tr>`;
+  if (ms.show18 && w18)       goldRows += `<tr><td>18Kt ${goldType}</td><td>${w18}</td><td>${fmt(g18)}</td><td>${fmt(gold18amt)}</td></tr>`;
+  if (showSilver)              goldRows += `<tr><td>Silver</td><td>${wSilver}</td><td>${fmt(silverPrice)}</td><td>${fmt(silverAmt)}</td></tr>`;
+  if (showPlat)                goldRows += `<tr><td>Platinum</td><td>${wPlatinum}</td><td>${fmt(platinumPrice)}</td><td>${fmt(platinumAmt)}</td></tr>`;
+
+  let dRowsHTML = '';
+  diamonds.forEach(d => {
+    const descr = `${d.shape} Cut ${d.size}mm`;
+    dRowsHTML += `<tr><td>${descr}<br><span style="font-size:10px;color:#888;">${d.stoneType||'Natural'}</span></td><td>${d.carats}</td><td>${d.price ? fmt(d.price) : '—'}</td><td>${fmt(d.cost)}</td></tr>`;
+  });
+  dRowsHTML += `<tr class="subtotal-row"><td colspan="3">Total Diamond Value (USD)</td><td>${fmt(totalDiamondCost)}</td></tr>`;
+
+  let lRows = '';
+  if (ms.show9  && w9)  lRows += `<tr><td>9Kt ${goldType}</td><td>${fmt(l9)}</td><td>${w9}</td><td>${fmt(labor9amt)}</td></tr>`;
+  if (ms.show14 && w14) lRows += `<tr><td>14Kt ${goldType}</td><td>${fmt(l14)}</td><td>${w14}</td><td>${fmt(labor14amt)}</td></tr>`;
+  if (ms.show18 && w18) lRows += `<tr><td>18Kt ${goldType}</td><td>${fmt(l18)}</td><td>${w18}</td><td>${fmt(labor18amt)}</td></tr>`;
+  if (wSilver && lsilver) lRows += `<tr><td>Silver</td><td>${fmt(lsilver)}</td><td>${wSilver}</td><td>${fmt(laborSilverAmt)}</td></tr>`;
+  if (wPlatinum && lplat) lRows += `<tr><td>Platinum</td><td>${fmt(lplat)}</td><td>${wPlatinum}</td><td>${fmt(laborPlatinumAmt)}</td></tr>`;
+
+  // Summary columns — show Silver and Platinum only if weights entered
+
+  // Summary grid columns
+  const summCols = [ms.show9&&w9, ms.show14&&w14, ms.show18&&w18, showSilver, showPlat].filter(Boolean).length + 1;
+
+  const cadHTML = cadBase64 ? `
+    <div class="quot-cad">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:10px;">Design Preview — ${designNo}</div>
+      <img src="${cadBase64}" alt="CAD Design">
+      <p>CAD / 3D Render — For reference only</p>
+    </div>` : '';
+
+  const html = `
+  <div class="quot-paper">
+    <div class="quot-header">
+      <div>
+        <h2>QUOTATION</h2>
+        <div style="font-size:11px;color:#aaa;margin-top:4px;letter-spacing:1px;">Currency: USD</div>
+      </div>
+      <div class="quot-header-right">
+        <strong>Quotation No.: ${quotNo}</strong><br>
+        Design No.: ${designNo}<br>
+        Date: ${quotDate}<br>
+        Client: ${clientName}
+      </div>
+    </div>
+
+    <div class="quot-meta">
+      <div class="quot-meta-item"><span class="mk">Design No.</span><span class="mv">${designNo}</span></div>
+      <div class="quot-meta-item"><span class="mk">Currency</span><span class="mv">USD</span></div>
+    </div>
+
+    <div class="quot-body">
+
+      <!-- Gold Details -->
+      <div class="quot-section-title"><span class="icon">🏅</span> 1. GOLD DETAILS</div>
+      <table class="quot-table">
+        <tr><th>Description</th><th>Weight (g)</th><th>Price (USD/g)</th><th>Amount (USD)</th></tr>
+        ${goldRows||'<tr><td colspan="4" style="color:#aaa;text-align:center;">No gold weights entered</td></tr>'}
+      </table>
+
+      <!-- Diamond Details -->
+      <div class="quot-section-title"><span class="icon">💎</span> 2. DIAMOND DETAILS</div>
+      <table class="quot-table">
+        <tr><th>Description</th><th>Carat (ct)</th><th>Price (USD/ct)</th><th>Amount (USD)</th></tr>
+        ${diamonds.length?dRowsHTML:'<tr><td colspan="4" style="color:#aaa;text-align:center;">No diamonds added</td></tr>'}
+      </table>
+
+      <!-- Labor -->
+      <div class="quot-section-title"><span class="icon">🔧</span> 3. LABOR / MANUFACTURING CHARGES</div>
+      <table class="quot-table">
+        <tr><th>Description</th><th>Rate (USD/g)</th><th>Weight (g)</th><th>Amount (USD)</th></tr>
+        ${lRows||'<tr><td colspan="4" style="color:#aaa;text-align:center;">No labor rates entered</td></tr>'}
+      </table>
+
+      <!-- Final Summary -->
+      <div class="quot-section-title" style="margin-top:20px;">📊 FINAL SUMMARY</div>
+      <div class="quot-summary" style="--sum-cols:${summCols};">
+        <div class="quot-summary-head" style="grid-template-columns:1.5fr ${' 1fr'.repeat(summCols-1)};">
+          <span>FINAL SUMMARY</span>
+          ${ms.show9&&w9?'<span>9 kt</span>':''} ${ms.show14&&w14?'<span>14 kt</span>':''} ${ms.show18&&w18?'<span>18 kt</span>':''}
+          ${showSilver?'<span>Silver</span>':''} ${showPlat?'<span>Platinum</span>':''}
+        </div>
+        <div class="quot-summary-row" style="grid-template-columns:1.5fr ${' 1fr'.repeat(summCols-1)};">
+          <span>Gold / Metal Value</span>
+          ${ms.show9&&w9?`<span>$ ${fmt(gold9amt)}</span>`:''} ${ms.show14&&w14?`<span>$ ${fmt(gold14amt)}</span>`:''} ${ms.show18&&w18?`<span>$ ${fmt(gold18amt)}</span>`:''}
+          ${showSilver?`<span>$ ${fmt(silverAmt)}</span>`:''} ${showPlat?`<span>$ ${fmt(platinumAmt)}</span>`:''}
+        </div>
+        <div class="quot-summary-row" style="grid-template-columns:1.5fr ${' 1fr'.repeat(summCols-1)};">
+          <span>Diamond Value</span>
+          ${ms.show9&&w9?`<span>$ ${fmt(totalDiamondCost)}</span>`:''} ${ms.show14&&w14?`<span>$ ${fmt(totalDiamondCost)}</span>`:''} ${ms.show18&&w18?`<span>$ ${fmt(totalDiamondCost)}</span>`:''}
+          ${showSilver?`<span>$ ${fmt(totalDiamondCost)}</span>`:''} ${showPlat?`<span>$ ${fmt(totalDiamondCost)}</span>`:''}
+        </div>
+        <div class="quot-summary-row" style="grid-template-columns:1.5fr ${' 1fr'.repeat(summCols-1)};">
+          <span>Labor / Manufacturing</span>
+          ${ms.show9&&w9?`<span>$ ${fmt(labor9amt)}</span>`:''} ${ms.show14&&w14?`<span>$ ${fmt(labor14amt)}</span>`:''} ${ms.show18&&w18?`<span>$ ${fmt(labor18amt)}</span>`:''}
+          ${showSilver?`<span>$ ${fmt(laborSilverAmt)}</span>`:''} ${showPlat?`<span>$ ${fmt(laborPlatinumAmt)}</span>`:''}
+        </div>
+        <div class="quot-summary-row total" style="grid-template-columns:1.5fr ${' 1fr'.repeat(summCols-1)};">
+          <span>GRAND TOTAL</span>
+          ${ms.show9&&w9?`<span>$ ${fmt(total9)}</span>`:''} ${ms.show14&&w14?`<span>$ ${fmt(total14)}</span>`:''} ${ms.show18&&w18?`<span>$ ${fmt(total18)}</span>`:''}
+          ${showSilver?`<span>$ ${fmt(totalSilver)}</span>`:''} ${showPlat?`<span>$ ${fmt(totalPlat)}</span>`:''}
+        </div>
+      </div>
+
+    </div><!-- end quot-body -->
+
+    <div class="quot-notes">
+      <p>⭐ Shipping charges are not included in this quotation and will be charged separately if applicable.</p>
+      <p>⭐ This quotation is based on the CAD estimated weight. The final gold weight will be confirmed after production is completed.</p>
+      <p>⭐ Due to the manufacturing process, the final weight may vary slightly from the CAD weight, which may result in a minor adjustment to the final price.</p>
+    </div>
+
+    ${cadHTML}
+
+    <div class="quot-footer">— Thank you for your trust and business! —</div>
+  </div>
+
+  <button class="btn-pdf" onclick="downloadPDF()">⬇ Download PDF Quotation</button>
+  `;
+
+  document.getElementById('quotPreview').innerHTML = '';
+  document.getElementById('quotPreview').innerHTML = html;
+  document.getElementById('quotPreview').scrollIntoView({behavior:'smooth'});
+  } catch(err) {
+    console.error('buildQuotation error:', err);
+    alert('Preview error: ' + err.message + '\n\nCheck console for details.');
+  }
+}
+
+// ── PDF Download — single page, exact browser match ────────────
+async function downloadPDF() {
+  const Q = window._Q; if (!Q) return;
+
+  // Load html2canvas dynamically
+  if (!window.html2canvas) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const btn = document.querySelector('.btn-pdf');
+  const origText = btn.innerHTML;
+  btn.innerHTML = '⏳ Generating PDF...';
+  btn.disabled = true;
+
+  try {
+    const el = document.querySelector('.quot-paper');
+    if (!el) { alert('Generate preview first.'); return; }
+
+    // Fix width for consistent render
+    const origWidth = el.style.width;
+    el.style.width = '900px';
+
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: 900,
+      windowWidth: 900,
+    });
+
+    el.style.width = origWidth;
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const imgW = canvas.width;   // px
+    const imgH = canvas.height;  // px
+
+    // Make PDF page exactly the same aspect ratio as the content
+    // Width = A4 width (210mm), height = whatever fits all content
+    const PW = 210; // mm
+    const PH = Math.ceil((imgH / imgW) * PW); // dynamic height — never clips
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      unit: 'mm',
+      format: [PW, PH],   // custom page size = content size
+      orientation: PH > PW ? 'portrait' : 'landscape'
+    });
+
+    // Place full image on single page
+    doc.addImage(imgData, 'JPEG', 0, 0, PW, PH);
+
+    doc.save(`Quotation_${Q.quotNo}_${Q.designNo}.pdf`);
+
+  } catch(err) {
+    alert('PDF generation failed: ' + err.message);
+  } finally {
+    btn.innerHTML = origText;
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── QUOTATION HISTORY (localStorage) ─────────────────────────
+// ══════════════════════════════════════════════════════════════
+
+const HIST_KEY = 'jewelartix_quotations';
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveHistory(list) {
+  localStorage.setItem(HIST_KEY, JSON.stringify(list));
+}
+
+// ── Collect all current form data into one object ─────────────
+function collectFormData() {
+  // Gold
+  const gold24 = document.getElementById('gold24').value;
+  const goldType = document.getElementById('goldType').value;
+  const wMatrix9 = document.getElementById('wMatrix9').value;
+
+  // Quotation info
+  const designNo   = document.getElementById('designNo').value;
+  const quotNo     = document.getElementById('quotNo').value;
+  const clientName = document.getElementById('clientName').value;
+  const quotDate   = document.getElementById('quotDate').value;
+
+  // Labor clients
+  const laborClients = laborRowIds.map(id => ({
+    id,
+    name: document.getElementById(`lname-${id}`)?.value || '',
+    l18:  document.getElementById(`l18-${id}`)?.value || '',
+    l14:  document.getElementById(`l14-${id}`)?.value || '',
+    l9:   document.getElementById(`l9-${id}`)?.value  || '',
+    selected: id === selectedLaborClient
+  }));
+
+  // Diamonds
+  const diamonds = [];
+  document.querySelectorAll('[id^="dr-"]').forEach(el => {
+    const id = el.id.replace('dr-','');
+    diamonds.push({
+      shape:  document.getElementById(`dsh-${id}`)?.value || '',
+      sizeW:  document.getElementById(`ds1-${id}`)?.value || '',
+      sizeH:  document.getElementById(`ds2-${id}`)?.value || '',
+      qty:    document.getElementById(`dq-${id}`)?.value  || '',
+      carats: document.getElementById(`dc-${id}`)?.value  || '',
+      price:  document.getElementById(`dp-${id}`)?.value  || '',
+    });
+  });
+
+  // Totals from last generated quotation
+  const Q = window._Q || {};
+
+  return {
+    // meta
+    savedAt:    new Date().toISOString(),
+    quotNo:     quotNo || `Q-${Date.now()}`,
+    designNo,
+    clientName,
+    quotDate,
+    // inputs
+    gold24, goldType, wMatrix9,
+    laborClients,
+    diamonds,
+    // computed totals (for display in history)
+    total9:  Q.total9  || 0,
+    total14: Q.total14 || 0,
+    total18: Q.total18 || 0,
+  };
+}
+
+// ── Save current quotation + PDF ─────────────────────────────
+async function saveQuotation() {
+  const quotNo = document.getElementById('quotNo').value?.trim();
+  if (!quotNo) { alert('Please enter a Quotation No. before saving.'); return; }
+
+  const btn = event.target;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⏳ Saving...';
+  btn.disabled = true;
+
+  try {
+    const data = collectFormData();
+
+    // ── Generate PDF and store as base64 ──
+    let pdfBase64 = null;
+    try {
+      const el = document.querySelector('.quot-paper');
+      if (el && window._Q) {
+        // Load html2canvas if needed
+        if (!window.html2canvas) {
+          await new Promise((res,rej) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            s.onload=res; s.onerror=rej; document.head.appendChild(s);
+          });
+        }
+        const origW = el.style.width;
+        el.style.width = '900px';
+        const canvas = await html2canvas(el, {
+          scale:2, useCORS:true, allowTaint:true,
+          backgroundColor:'#ffffff', logging:false, width:900, windowWidth:900
+        });
+        el.style.width = origW;
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.82); // slightly compressed to save space
+        const imgW = canvas.width, imgH = canvas.height;
+        const PW = 210, PH = Math.ceil((imgH/imgW)*PW);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit:'mm', format:[PW,PH], orientation: PH>PW?'portrait':'landscape' });
+        doc.addImage(imgData,'JPEG',0,0,PW,PH);
+        pdfBase64 = doc.output('datauristring'); // full data URI
+      }
+    } catch(pdfErr) {
+      console.warn('PDF save failed:', pdfErr);
+      // Continue saving form data even if PDF fails
+    }
+
+    data.pdfBase64 = pdfBase64;
+    data.hasPdf    = !!pdfBase64;
+
+    const list = getHistory();
+    const existingIdx = list.findIndex(q => q.quotNo === data.quotNo);
+    if (existingIdx >= 0) {
+      if (!confirm(`Quotation "${data.quotNo}" already saved. Overwrite?`)) {
+        btn.innerHTML = orig; btn.disabled = false; return;
+      }
+      list[existingIdx] = data;
+    } else {
+      list.unshift(data);
+    }
+
+    saveHistory(list);
+    renderHistory();
+
+    btn.innerHTML = '✓ Saved + PDF!';
+    btn.style.background = 'linear-gradient(135deg,#1a3a1a,#2d6a2d)';
+    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+
+  } catch(err) {
+    alert('Save failed: ' + err.message);
+    btn.innerHTML = orig; btn.disabled = false;
+  }
+}
+
+// ── Toggle history drawer ─────────────────────────────────────
+function toggleHistory() {
+  const drawer = document.getElementById('historyDrawer');
+  const isOpen = drawer.style.display !== 'none';
+  drawer.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderHistory();
+}
+
+// ── Render history list ───────────────────────────────────────
+function renderHistory() {
+  const list = getHistory();
+  const container = document.getElementById('historyList');
+
+  if (!list.length) {
+    container.innerHTML = `<div class="hist-empty">💎 No saved quotations yet.<br><span style="font-size:11px;">Generate and save a quotation to see it here.</span></div>`;
+    return;
+  }
+
+  const groups = {};
+  list.forEach(q => {
+    const dateKey = new Date(q.savedAt).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(q);
+  });
+
+  let html = '';
+  for (const [date, qs] of Object.entries(groups)) {
+    html += `<div class="hist-group-title">📅 ${date}</div>`;
+    qs.forEach(q => {
+      const total18 = q.total18 ? `$${q.total18.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—';
+      const time    = new Date(q.savedAt).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+      const pdfBtn  = q.hasPdf
+        ? `<button class="hist-btn" style="background:rgba(86,192,117,0.15);color:#56C075;border:1px solid rgba(86,192,117,0.3);" onclick="downloadSavedPdf('${q.quotNo}')">⬇ PDF</button>`
+        : `<button class="hist-btn" style="background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.3);" onclick="regenPdf('${q.quotNo}')">🔄 PDF</button>`;
+      html += `
+        <div class="hist-card">
+          <div class="hist-card-info">
+            <div class="hist-card-title">📄 ${q.quotNo}${q.designNo ? ` — ${q.designNo}` : ''}</div>
+            <div class="hist-card-meta">
+              ${q.clientName ? `👤 ${q.clientName} &nbsp;·&nbsp; ` : ''}
+              🕐 ${time}
+              ${q.diamonds?.length ? ` &nbsp;·&nbsp; 💎 ${q.diamonds.length} diamond types` : ''}
+              ${q.hasPdf ? ` &nbsp;·&nbsp; <span style="color:#56C075;">✓ PDF</span>` : ''}
+            </div>
+          </div>
+          <div style="text-align:right;min-width:70px;">
+            <div class="hist-card-total">${total18}</div>
+            <div style="font-size:9px;color:var(--muted);">18kt total</div>
+          </div>
+          <div class="hist-card-btns" style="flex-direction:column;gap:4px;">
+            <div style="display:flex;gap:4px;">
+              <button class="hist-btn load" onclick="loadQuotation('${q.quotNo}')">Load</button>
+              ${pdfBtn}
+            </div>
+            <button class="hist-btn del" style="width:100%;" onclick="deleteQuotation('${q.quotNo}')">✕ Delete</button>
+          </div>
+        </div>`;
+    });
+  }
+  container.innerHTML = html;
+}
+
+// ── Download saved PDF directly ───────────────────────────────
+function downloadSavedPdf(quotNo) {
+  const list = getHistory();
+  const q = list.find(x => x.quotNo === quotNo);
+  if (!q?.pdfBase64) { alert('No PDF saved for this quotation.'); return; }
+  const a = document.createElement('a');
+  a.href = q.pdfBase64;
+  a.download = `Quotation_${q.quotNo}_${q.designNo||'JewelArtix'}.pdf`;
+  a.click();
+}
+
+// ── Re-generate PDF from saved data ──────────────────────────
+async function regenPdf(quotNo) {
+  const list = getHistory();
+  const q = list.find(x => x.quotNo === quotNo);
+  if (!q) return;
+  // Load the quotation first, then generate PDF
+  await loadQuotationSilent(q);
+  await buildQuotationSilent(q);
+  await downloadPDF();
+}
+
+// ── Silent load (no UI toggle) ────────────────────────────────
+async function loadQuotationSilent(q) {
+  document.getElementById('quotNo').value     = q.quotNo     || '';
+  document.getElementById('designNo').value   = q.designNo   || '';
+  document.getElementById('clientName').value = q.clientName || '';
+  document.getElementById('quotDate').value   = q.quotDate   || '';
+  document.getElementById('gold24').value     = q.gold24     || '';
+  document.getElementById('goldType').value   = q.goldType   || 'White Gold';
+  document.getElementById('wMatrix9').value   = q.wMatrix9   || '';
+  autoCalcGold(); autoCalcWeights();
+  document.getElementById('laborRows').innerHTML = '';
+  laborRowIds = []; laborRowCount = 0;
+  (q.laborClients || []).forEach(lc => {
+    addLaborRow();
+    const id = laborRowIds[laborRowIds.length-1];
+    document.getElementById(`lname-${id}`).value = lc.name||'';
+    document.getElementById(`l18-${id}`).value   = lc.l18 ||'';
+    document.getElementById(`l14-${id}`).value   = lc.l14 ||'';
+    document.getElementById(`l9-${id}`).value    = lc.l9      ||'';
+        if(document.getElementById(`lsilver-${id}`)) document.getElementById(`lsilver-${id}`).value = lc.lsilver||'';
+        if(document.getElementById(`lplat-${id}`))   document.getElementById(`lplat-${id}`).value   = lc.lplat  ||'';
+    if (lc.selected) selectLaborClient(id);
+  });
+  document.getElementById('dRows').innerHTML = '';
+  dRowCount = 0;
+  (q.diamonds||[]).forEach(d => addDRow({ shape:d.shape, sizeW:d.sizeW, sizeH:d.sizeH, qty:d.qty, carats:d.carats, price:d.price }));
+  if (!q.diamonds?.length) addDRow();
+}
+
+// ── Silent build (no scroll) ──────────────────────────────────
+async function buildQuotationSilent(q) {
+  buildQuotation();
+  await new Promise(r => setTimeout(r, 300));
+}
+
+// ── Load a saved quotation back into form ─────────────────────
+function loadQuotation(quotNo) {
+  const list = getHistory();
+  const q    = list.find(x => x.quotNo === quotNo);
+  if (!q) return;
+
+  // Quotation info
+  document.getElementById('quotNo').value     = q.quotNo     || '';
+  document.getElementById('designNo').value   = q.designNo   || '';
+  document.getElementById('clientName').value = q.clientName || '';
+  document.getElementById('quotDate').value   = q.quotDate   || '';
+
+  // Gold
+  document.getElementById('gold24').value    = q.gold24    || '';
+  document.getElementById('goldType').value  = q.goldType  || 'White Gold';
+  document.getElementById('wMatrix9').value  = q.wMatrix9  || '';
+  autoCalcGold();
+  autoCalcWeights();
+
+  // Labor clients — rebuild rows
+  document.getElementById('laborRows').innerHTML = '';
+  laborRowIds = []; laborRowCount = 0; selectedLaborClient = 0;
+  (q.laborClients || [{ name:'', l18:'', l14:'', l9:'', selected:true }]).forEach(lc => {
+    addLaborRow();
+    const id = laborRowIds[laborRowIds.length - 1];
+    document.getElementById(`lname-${id}`).value = lc.name || '';
+    document.getElementById(`l18-${id}`).value   = lc.l18  || '';
+    document.getElementById(`l14-${id}`).value   = lc.l14  || '';
+    document.getElementById(`l9-${id}`).value    = lc.l9   || '';
+    if (lc.selected) selectLaborClient(id);
+  });
+
+  // Diamonds — rebuild rows
+  document.getElementById('dRows').innerHTML = '';
+  dRowCount = 0;
+  (q.diamonds || []).forEach(d => {
+    addDRow({
+      shape:  d.shape,
+      sizeW:  d.sizeW,
+      sizeH:  d.sizeH,
+      qty:    d.qty,
+      carats: d.carats,
+      price:  d.price
+    });
+  });
+  if (!q.diamonds?.length) addDRow();
+
+  toggleHistory();
+
+  // Flash confirm
+  const btn = document.querySelector('.btn-generate');
+  const orig = btn.innerHTML;
+  btn.innerHTML = `✓ Loaded: ${quotNo}`;
+  setTimeout(() => { btn.innerHTML = orig; }, 1800);
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Delete one quotation ──────────────────────────────────────
+function deleteQuotation(quotNo) {
+  if (!confirm(`Delete quotation "${quotNo}"?`)) return;
+  const list = getHistory().filter(q => q.quotNo !== quotNo);
+  saveHistory(list);
+  renderHistory();
+}
+
+// ── Clear all history ─────────────────────────────────────────
+function clearAllHistory() {
+  if (!confirm('Delete ALL saved quotations? This cannot be undone.')) return;
+  localStorage.removeItem(HIST_KEY);
+  renderHistory();
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── AUTO-SAVE / RESTORE + EXCEL PERSIST + UNDO/REDO ──────────
+// ══════════════════════════════════════════════════════════════
+const FORM_KEY     = 'jewelartix_form_quot';
+const SETTINGS_KEY = 'jewelartix_settings_quot'; // labor + excel — persists separately
+const EXCEL_KEY    = 'jewelartix_excel_quot';     // excel binary stored separately (can be large)
+
+// ── Undo / Redo stack ─────────────────────────────────────────
+let undoStack = [];
+let redoStack = [];
+let undoPaused = false;
+
+function snapshotForUndo() {
+  if (undoPaused) return;
+  const snap = captureFormSnapshot();
+  // Don't push duplicate
+  if (undoStack.length && JSON.stringify(undoStack[undoStack.length-1]) === JSON.stringify(snap)) return;
+  undoStack.push(snap);
+  if (undoStack.length > 50) undoStack.shift(); // max 50 steps
+  redoStack = []; // clear redo on new action
+}
+
+function captureFormSnapshot() {
+  const data = {};
+  ['quotNo','designNo','clientName','quotDate','gold24','goldType','wMatrix9','silverPrice','platinumPrice'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
+  data.laborClients = laborRowIds.map(id => ({
+    name: document.getElementById(`lname-${id}`)?.value||'',
+    l18:  document.getElementById(`l18-${id}`)?.value||'',
+    l14:  document.getElementById(`l14-${id}`)?.value||'',
+    l9:   document.getElementById(`l9-${id}`)?.value||'',
+    selected: id === selectedLaborClient
+  }));
+  data.diamonds = [];
+  document.querySelectorAll('[id^="dr-"]').forEach(el => {
+    const id = el.id.replace('dr-','');
+    data.diamonds.push({
+      shape:  document.getElementById(`dsh-${id}`)?.value||'',
+      sizeW:  document.getElementById(`ds1-${id}`)?.value||'',
+      sizeH:  document.getElementById(`ds2-${id}`)?.value||'',
+      qty:    document.getElementById(`dq-${id}`)?.value||'',
+      carats: document.getElementById(`dc-${id}`)?.value||'',
+      price:  document.getElementById(`dp-${id}`)?.value||'',
+    });
+  });
+  return data;
+}
+
+function applySnapshot(data) {
+  undoPaused = true;
+  ['quotNo','designNo','clientName','quotDate','gold24','goldType','wMatrix9','silverPrice','platinumPrice'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && data[id] !== undefined) el.value = data[id];
+  });
+  autoCalcGold(); autoCalcWeights();
+  if (data.laborClients?.length) {
+    document.getElementById('laborRows').innerHTML = '';
+    laborRowIds = []; laborRowCount = 0;
+    data.laborClients.forEach(lc => {
+      addLaborRow();
+      const id = laborRowIds[laborRowIds.length-1];
+      document.getElementById(`lname-${id}`).value = lc.name||'';
+      document.getElementById(`l18-${id}`).value   = lc.l18||'';
+      document.getElementById(`l14-${id}`).value   = lc.l14||'';
+      document.getElementById(`l9-${id}`).value    = lc.l9||'';
+      if (lc.selected) selectLaborClient(id);
+    });
+  }
+  if (data.diamonds?.length) {
+    document.getElementById('dRows').innerHTML = '';
+    dRowCount = 0;
+    data.diamonds.forEach(d => addDRow({ shape:d.shape, sizeW:d.sizeW, sizeH:d.sizeH, qty:d.qty, carats:d.carats, price:d.price, stoneType:d.stoneType }));
+  }
+  undoPaused = false;
+  autoSaveForm();
+}
+
+function doUndo() {
+  if (undoStack.length < 2) return;
+  redoStack.push(undoStack.pop());
+  applySnapshot(undoStack[undoStack.length-1]);
+  showUndoToast('↩ Undo');
+}
+
+function doRedo() {
+  if (!redoStack.length) return;
+  const snap = redoStack.pop();
+  undoStack.push(snap);
+  applySnapshot(snap);
+  showUndoToast('↪ Redo');
+}
+
+function showUndoToast(msg) {
+  let t = document.getElementById('undoToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'undoToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:var(--gold);border:1px solid var(--gold-dark);padding:8px 20px;border-radius:20px;font-size:12px;letter-spacing:1px;z-index:9999;opacity:0;transition:opacity 0.2s;pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.opacity = '0', 1200);
+}
+
+// Keyboard shortcut handler
+document.addEventListener('keydown', e => {
+  const isCtrl = e.ctrlKey || e.metaKey;
+  if (isCtrl && e.key === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
+  if (isCtrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); doRedo(); }
+});
+
+// ── Auto-Save (every input) ───────────────────────────────────
+function autoSaveForm() {
+  try {
+    const data = captureFormSnapshot();
+    localStorage.setItem(FORM_KEY, JSON.stringify(data));
+  } catch(e) { console.warn('AutoSave failed:', e); }
+}
+
+// ── Save Settings (labor + excel) — manually triggered ────────
+function manualSaveSettings() {
+  try {
+    const settings = {
+      laborClients: laborRowIds.map(id => ({
+        name: document.getElementById(`lname-${id}`)?.value||'',
+        l18:  document.getElementById(`l18-${id}`)?.value||'',
+        l14:  document.getElementById(`l14-${id}`)?.value||'',
+        l9:   document.getElementById(`l9-${id}`)?.value||'',
+        selected: id === selectedLaborClient
+      })),
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+
+    // Save Excel if loaded
+    if (diamondPriceList.length && window._excelBase64) {
+      try { localStorage.setItem(EXCEL_KEY, window._excelBase64); }
+      catch(e) { console.warn('Excel too large to save:', e); }
+    }
+
+    // Flash button
+    const btn = document.getElementById('settingsSaveBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ Saved!';
+    btn.style.background = 'rgba(86,192,117,0.2)';
+    btn.style.borderColor = '#56C075';
+    btn.style.color = '#56C075';
+    setTimeout(() => {
+      btn.innerHTML = orig;
+      btn.style.background = 'var(--card)';
+      btn.style.borderColor = '#2d6a2d';
+      btn.style.color = '#90EE90';
+    }, 1800);
+  } catch(e) { alert('Settings save failed: ' + e.message); }
+}
+
+// ── Auto-Restore on page load ─────────────────────────────────
+function autoRestoreForm() {
+  try {
+    // Restore settings first (labor + excel)
+    const sRaw = localStorage.getItem(SETTINGS_KEY);
+    if (sRaw) {
+      const settings = JSON.parse(sRaw);
+      if (settings.laborClients?.length) {
+        document.getElementById('laborRows').innerHTML = '';
+        laborRowIds = []; laborRowCount = 0;
+        settings.laborClients.forEach(lc => {
+          addLaborRow();
+          const id = laborRowIds[laborRowIds.length-1];
+          document.getElementById(`lname-${id}`).value = lc.name||'';
+          document.getElementById(`l18-${id}`).value   = lc.l18||'';
+          document.getElementById(`l14-${id}`).value   = lc.l14||'';
+          document.getElementById(`l9-${id}`).value    = lc.l9||'';
+          if (lc.selected) selectLaborClient(id);
+        });
+      }
+    }
+
+    // Restore Excel
+    const excelB64 = localStorage.getItem(EXCEL_KEY);
+    if (excelB64) {
+      window._excelBase64 = excelB64;
+      try {
+        const binary = atob(excelB64.split(',')[1] || excelB64);
+        const bytes  = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const wb   = XLSX.read(bytes, { type:'array' });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const raw  = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+        _parseExcelRaw(raw);
+        document.getElementById('xlsStatus').innerHTML =
+          `<div class="badge ok">✓ ${diamondPriceList.length} records restored from saved Excel</div>`;
+        showRemoveExcelBtn();
+      } catch(e) { console.warn('Excel restore failed:', e); }
+    }
+
+    // Restore form data
+    const raw = localStorage.getItem(FORM_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    ['quotNo','designNo','clientName','quotDate','gold24','goldType','wMatrix9','silverPrice','platinumPrice'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && data[id] !== undefined) el.value = data[id];
+    });
+    autoCalcGold(); autoCalcWeights();
+    // Diamond rows
+    if (data.diamonds?.length) {
+      document.getElementById('dRows').innerHTML = '';
+      dRowCount = 0;
+      data.diamonds.forEach(d => addDRow({ shape:d.shape, sizeW:d.sizeW, sizeH:d.sizeH, qty:d.qty, carats:d.carats, price:d.price, stoneType:d.stoneType }));
+    }
+
+    // Take initial undo snapshot
+    setTimeout(() => { undoStack = [captureFormSnapshot()]; }, 100);
+
+  } catch(e) { console.warn('AutoRestore failed:', e); }
+}
+
+// ── Extract Excel parsing into reusable function ──────────────
+function _parseExcelRaw(raw) {
+  const SHAPES = ['round','oval','pear','marquise','cushion','princess','emerald','baguette','heart'];
+  let dataStart = -1;
+  for (let i = 0; i < raw.length; i++) {
+    const a = (raw[i][0]||'').toString().toLowerCase().trim();
+    if (SHAPES.some(s => a === s || a.startsWith(s))) { dataStart = i; break; }
+  }
+  if (dataStart < 0) return;
+  const headerText = raw.slice(0, dataStart).map(r => r.map(c=>(c||'').toString().toLowerCase()).join(' ')).join(' ');
+  const is4Col = headerText.includes('width') && headerText.includes('height');
+  const sampleB = (raw[dataStart][1]||'').toString();
+  const bIsNum  = !isNaN(parseFloat(sampleB)) && !sampleB.includes('x');
+  const is2Range = !is4Col && (headerText.includes('from') || bIsNum);
+
+  diamondPriceList = [];
+  for (let i = dataStart; i < raw.length; i++) {
+    const r = raw[i];
+    if (!r || !r[0]) continue;
+    const shape = (r[0]||'').toString().toLowerCase().trim();
+    if (!SHAPES.some(s => shape === s || shape.startsWith(s))) continue;
+    let entry = { shape, wFrom:0, wTo:0, hFrom:0, hTo:0, size:'', price:0, mode:'exact' };
+    if (is4Col) {
+      entry = { shape, wFrom:parseFloat(r[1])||0, wTo:parseFloat(r[2])||0, hFrom:parseFloat(r[3])||0, hTo:parseFloat(r[4])||0, price:parseFloat(r[7])||0, size:'', mode:'4col' };
+    } else if (is2Range) {
+      const sf=parseFloat(r[1])||0, st=parseFloat(r[2])||0;
+      entry = { shape, wFrom:sf, wTo:st, hFrom:sf, hTo:st, price:parseFloat(r[3])||0, size:'', mode:'2range' };
+    } else {
+      entry.size  = normalizeSize((r[1]||'').toString());
+      entry.price = (() => { for (let c=2;c<=5;c++){const v=parseFloat(r[c]);if(!isNaN(v)&&v>0)return v;} return 0; })();
+      entry.mode  = 'exact';
+    }
+    diamondPriceList.push(entry);
+  }
+}
+
+// ── Remove Excel ──────────────────────────────────────────────
+function removeExcel() {
+  diamondPriceList = [];
+  window._excelBase64 = null;
+  localStorage.removeItem(EXCEL_KEY);
+  document.getElementById('xlsStatus').innerHTML =
+    `<div class="badge info">Excel removed — upload a new file</div>`;
+  document.getElementById('removeExcelBtn').style.display = 'none';
+  // Clear auto-filled prices from diamond rows
+  document.querySelectorAll('[id^="dr-"]').forEach(el => {
+    const id = el.id.replace('dr-','');
+    const priceEl = document.getElementById(`dp-${id}`);
+    if (priceEl && priceEl.classList.contains('price-auto')) {
+      priceEl.value = '';
+      priceEl.className = 'price-manual';
+    }
+  });
+}
+
+function showRemoveExcelBtn() {
+  const btn = document.getElementById('removeExcelBtn');
+  if (btn) btn.style.display = '';
+}
+
+// ── Patch loadDiamondExcel to also store base64 ───────────────
+const _origLoadDiamondExcel = loadDiamondExcel;
+function loadDiamondExcel(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._excelBase64 = e.target.result; // store for saving
+    // Call original logic
+    const binary = e.target.result;
+    try {
+      const wb  = XLSX.read(binary.split(',')[1] || binary, { type: binary.includes(',') ? 'base64' : 'binary' });
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+      _parseExcelRaw(raw);
+      const withPrice    = diamondPriceList.filter(r => r.price > 0).length;
+      const withoutPrice = diamondPriceList.length - withPrice;
+      const modeLabel    = diamondPriceList[0]?.mode === '4col' ? 'W×H range' : diamondPriceList[0]?.mode === '2range' ? 'size range' : 'exact size';
+      let msg = `✓ ${diamondPriceList.length} records (${modeLabel})`;
+      if (withoutPrice === diamondPriceList.length) msg += ` — ⚠ Fill Price column`;
+      else if (withoutPrice > 0) msg += ` — ${withPrice} priced, ${withoutPrice} empty`;
+      else msg += ` — all priced ✓`;
+      document.getElementById('xlsStatus').innerHTML = `<div class="badge ok">${msg}</div>`;
+      showRemoveExcelBtn();
+    } catch(err) {
+      document.getElementById('xlsStatus').innerHTML = `<div class="badge err">✗ ${err.message}</div>`;
+    }
+  };
+  reader.readAsDataURL(file); // read as dataURL so we have base64
+}
+
+document.addEventListener('input',  () => { snapshotForUndo(); autoSaveForm(); }, true);
+document.addEventListener('change', () => { snapshotForUndo(); autoSaveForm(); }, true);
+
+
+</script>
+</body>
+</html>
