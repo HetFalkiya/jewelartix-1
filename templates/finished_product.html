@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JewelArtix — Quotation System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600&display=swap');
+
+:root {
+  --gold: #C9A84C;
+  --gold-light: #E8D5A3;
+  --gold-dark: #8B6914;
+  --black: #0D0D0D;
+  --surface: #161616;
+  --card: #1E1E1E;
+  --border: #2E2E2E;
+  --text: #EFEFEF;
+  --muted: #888;
+  --green: #56C075;
+  --red: #E57373;
+  --blue: #64B5F6;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--black); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; min-height: 100vh; }
+
+/* ── Header ── */
+header {
+  background: linear-gradient(90deg, #111 0%, #1a1500 50%, #111 100%);
+  border-bottom: 1px solid var(--gold-dark);
+  padding: 14px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-gem {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+  clip-path: polygon(50% 0%, 100% 35%, 80% 100%, 20% 100%, 0% 35%);
+}
+.logo h1 { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold-light); letter-spacing: 2px; }
+.logo span { font-size: 10px; color: var(--muted); letter-spacing: 3px; display: block; text-transform: uppercase; }
+.header-badge { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; border: 1px solid var(--border); padding: 4px 12px; border-radius: 20px; }
+
+/* ── Layout ── */
+.app { display: grid; grid-template-columns: 480px 1fr; gap: 0; min-height: calc(100vh - 63px); }
+
+/* ── Left Panel ── */
+.left-panel { background: var(--surface); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; max-height: calc(100vh - 63px); }
+.right-panel { padding: 20px; overflow-y: auto; max-height: calc(100vh - 63px); }
+
+/* ── Section ── */
+.section { margin-bottom: 18px; }
+.section-title {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--gold); font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.section-title .num {
+  background: var(--gold-dark); color: #000;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; flex-shrink: 0;
+}
+
+/* ── Form Elements ── */
+label { display: block; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; margin-top: 10px; }
+label:first-child { margin-top: 0; }
+input[type="text"], input[type="number"], select, textarea {
+  width: 100%; background: var(--card); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); padding: 8px 11px;
+  font-family: 'Inter', sans-serif; font-size: 13px; outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--gold-dark); }
+select option { background: var(--card); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+/* ── Upload ── */
+.upload-zone {
+  border: 2px dashed var(--border); border-radius: 7px;
+  padding: 18px; text-align: center; cursor: pointer;
+  position: relative; transition: all 0.2s;
+}
+.upload-zone:hover { border-color: var(--gold); background: rgba(201,168,76,0.03); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-zone .icon { font-size: 22px; margin-bottom: 5px; }
+.upload-zone strong { color: var(--gold-light); font-size: 12px; display: block; margin-bottom: 3px; }
+.upload-zone p { color: var(--muted); font-size: 11px; }
+
+/* ── Badge ── */
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 500; margin-top: 6px; }
+.badge.ok { background: rgba(86,192,117,0.15); color: var(--green); }
+.badge.err { background: rgba(229,115,115,0.15); color: var(--red); }
+.badge.info { background: rgba(201,168,76,0.12); color: var(--gold); }
+
+/* ── Diamond Rows ── */
+.d-row { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 7px; }
+.d-row-grid { display: grid; grid-template-columns: 130px 90px 50px 80px 85px 26px; gap: 7px; align-items: center; }
+.d-row-grid.dual { grid-template-columns: 130px 140px 50px 80px 85px 26px; }
+.d-size-single input { width: 100%; }
+.d-size-dual { display: grid; grid-template-columns: 1fr 14px 1fr; gap: 3px; align-items: center; }
+.d-size-dual span { text-align: center; color: var(--muted); font-size: 12px; font-weight: 600; }
+.d-row label { margin-top: 0; font-size: 9px; }
+.price-auto  { border-color: var(--green)     !important; color: var(--green)     !important; background: rgba(86,192,117,0.08) !important; }
+.price-manual{ border-color: var(--gold-dark) !important; }
+.btn-rm { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 0 2px; transition: color 0.2s; line-height: 1; }
+.btn-rm:hover { color: var(--red); }
+.btn-add { width: 100%; background: none; border: 1px dashed var(--border); color: var(--muted); border-radius: 5px; padding: 8px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; margin-top: 8px; }
+.btn-add:hover { border-color: var(--gold); color: var(--gold); }
+.d-header { display: grid; grid-template-columns: 130px 90px 50px 80px 85px 26px; gap: 7px; margin-bottom: 5px; padding: 0 4px; }
+.d-header.dual-header { grid-template-columns: 130px 140px 50px 80px 85px 26px; }
+.d-header span { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+
+/* ── Tabs ── */
+.tabs { display: flex; background: var(--card); border-radius: 6px; padding: 3px; gap: 2px; margin-bottom: 12px; }
+.tab { flex: 1; padding: 7px; text-align: center; border-radius: 4px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); border: none; background: none; transition: all 0.2s; }
+.tab.active { background: var(--surface); color: var(--gold); border: 1px solid var(--gold-dark); }
+
+/* ── Photo zone ── */
+.photo-zone { border: 2px dashed var(--border); border-radius: 7px; padding: 18px; text-align: center; cursor: pointer; position: relative; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; }
+.photo-zone:hover { border-color: var(--gold); }
+.photo-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.photo-zone img { max-height: 120px; border-radius: 5px; object-fit: contain; }
+.photo-zone p { color: var(--muted); font-size: 11px; }
+
+/* ── Buttons ── */
+.btn-ai { background: linear-gradient(135deg, var(--gold-dark), var(--gold)); border: none; border-radius: 5px; color: #000; padding: 9px 16px; cursor: pointer; font-weight: 700; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; width: 100%; margin-top: 8px; transition: opacity 0.2s; }
+.btn-ai:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-ai:hover:not(:disabled) { opacity: 0.85; }
+
+.btn-generate { background: linear-gradient(135deg, var(--gold-dark), var(--gold)); border: none; border-radius: 7px; color: #000; padding: 13px; cursor: pointer; font-weight: 700; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; width: 100%; margin-top: 14px; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+.btn-generate:hover { box-shadow: 0 4px 20px rgba(201,168,76,0.3); transform: translateY(-1px); }
+.btn-generate:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-pdf { background: var(--card); border: 1px solid var(--gold-dark); border-radius: 7px; color: var(--gold); padding: 11px; cursor: pointer; font-weight: 600; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; width: 100%; margin-top: 10px; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+.btn-pdf:hover { background: var(--gold-dark); color: #000; }
+
+/* ── Spinner ── */
+.spin-row { display: flex; align-items: center; gap: 7px; color: var(--gold); font-size: 11px; padding: 6px 0; }
+.spinner { width: 13px; height: 13px; border: 2px solid rgba(201,168,76,0.3); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Excel preview ── */
+.xls-preview { max-height: 140px; overflow-y: auto; border: 1px solid var(--border); border-radius: 5px; margin-top: 8px; }
+.xls-preview table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.xls-preview th { background: var(--card); color: var(--gold); padding: 5px 8px; text-align: left; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; position: sticky; top: 0; }
+.xls-preview td { padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--muted); }
+.xls-preview tr:hover td { background: var(--card); color: var(--text); }
+
+/* ── Right: Quotation Preview ── */
+.quot-paper {
+  background: #fff; border-radius: 8px; padding: 0;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  overflow: hidden; color: #222;
+  font-family: 'Inter', sans-serif;
+}
+
+.quot-header {
+  background: #1a1a2e; color: #fff;
+  padding: 18px 28px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.quot-header h2 { font-size: 26px; font-weight: 700; letter-spacing: 4px; color: #fff; }
+.quot-header-right { text-align: right; font-size: 11px; color: #aaa; line-height: 1.8; }
+.quot-header-right strong { color: #fff; font-size: 13px; }
+
+.quot-meta { background: #f8f8f8; border-bottom: 2px solid #e0e0e0; padding: 10px 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.quot-meta-item { font-size: 11px; }
+.quot-meta-item .mk { color: #888; display: block; font-size: 10px; }
+.quot-meta-item .mv { font-weight: 600; color: #222; }
+
+.quot-body { padding: 16px 28px; }
+
+.quot-section-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; color: #1a1a2e;
+  margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 1px;
+}
+.quot-section-title .icon { font-size: 15px; }
+
+.quot-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
+.quot-table th { background: #1a1a2e; color: #fff; padding: 7px 10px; text-align: left; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+.quot-table th:last-child, .quot-table td:last-child { text-align: right; }
+.quot-table td { padding: 6px 10px; border-bottom: 1px solid #eee; }
+.quot-table tr:hover td { background: #f9f9f9; }
+.quot-table .subtotal-row td { background: #f0f0f0; font-weight: 600; font-size: 11px; }
+.quot-table .subtotal-row td:last-child { color: #1a1a2e; }
+
+.match-ok { color: #2e7d32; font-size: 10px; }
+.match-warn { color: #c62828; font-size: 10px; }
+
+.quot-summary { margin-top: 16px; border: 2px solid #1a1a2e; border-radius: 6px; overflow: hidden; }
+.quot-summary-head { background: #1a1a2e; color: #fff; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; padding: 8px 14px; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+.quot-summary-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; padding: 7px 14px; border-bottom: 1px solid #eee; font-size: 12px; }
+.quot-summary-row:last-child { border: none; }
+.quot-summary-row.total { background: #1a1a2e; color: #fff; font-weight: 700; font-size: 13px; }
+.quot-summary-head span:not(:first-child), .quot-summary-row span:not(:first-child) { text-align: right; }
+.quot-summary-row.total span { color: #FFD700; }
+.quot-summary-row.total span:first-child { color: #fff; }
+
+.quot-notes { background: #fffde7; border-top: 2px solid #ffd54f; padding: 12px 28px; font-size: 10px; color: #555; }
+.quot-notes p { margin-bottom: 4px; }
+
+.quot-footer { background: #1a1a2e; color: #aaa; text-align: center; padding: 10px; font-size: 10px; letter-spacing: 1px; }
+
+.quot-cad { padding: 16px 28px; background: #f5f5f5; text-align: center; }
+.quot-cad img { max-width: 100%; max-height: 280px; border-radius: 6px; object-fit: contain; border: 1px solid #ddd; }
+.quot-cad p { font-size: 10px; color: #888; margin-top: 6px; }
+
+/* ── CAD image upload ── */
+.cad-upload { border: 2px dashed var(--border); border-radius: 7px; padding: 14px; text-align: center; cursor: pointer; position: relative; transition: all 0.2s; }
+.cad-upload:hover { border-color: var(--gold); }
+.cad-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.cad-upload img { max-height: 80px; object-fit: contain; border-radius: 4px; }
+.cad-upload strong { color: var(--gold-light); font-size: 12px; display: block; }
+.cad-upload p { color: var(--muted); font-size: 11px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 2px; }
+
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+/* ── Labor Client Rows ── */
+.labor-row td { padding: 5px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.labor-row input[type="text"]   { background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 5px 8px; font-size: 12px; width: 100%; outline: none; }
+.labor-row input[type="number"] { background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 5px 6px; font-size: 12px; width: 72px; outline: none; text-align: center; }
+.labor-row input:focus { border-color: var(--gold-dark); }
+.labor-row.selected td { background: rgba(201,168,76,0.08); }
+.labor-row.selected input { border-color: var(--gold-dark); }
+.labor-select-btn { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.labor-select-btn.active { background: var(--gold); border-color: var(--gold); }
+.labor-select-btn.active::after { content: '✓'; font-size: 11px; color: #000; font-weight: 700; }
+.labor-select-btn:not(.active)::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--border); display: block; margin: auto; }
+
+/* ── History Cards ── */
+.hist-group-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 10px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.hist-card { background: var(--card); border: 1px solid var(--border); border-radius: 7px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; transition: border-color 0.2s; }
+.hist-card:hover { border-color: var(--gold-dark); }
+.hist-card-info { flex: 1; min-width: 0; }
+.hist-card-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-card-meta  { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.hist-card-total { font-size: 12px; color: var(--gold); font-weight: 600; white-space: nowrap; }
+.hist-card-btns  { display: flex; gap: 6px; }
+.hist-btn { border: none; border-radius: 4px; padding: 5px 10px; font-size: 10px; cursor: pointer; letter-spacing: 1px; text-transform: uppercase; font-family: Inter,sans-serif; transition: opacity 0.2s; }
+.hist-btn:hover { opacity: 0.8; }
+.hist-btn.load   { background: rgba(201,168,76,0.15); color: var(--gold); border: 1px solid var(--gold-dark); }
+.hist-btn.del    { background: rgba(229,115,115,0.12); color: var(--red); border: 1px solid rgba(229,115,115,0.3); }
+.hist-empty { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-gem"></div>
+    <div>
+      <h1>JewelArtix</h1>
+      <span>Quotation Automation System</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <button onclick="toggleHistory()" id="historyBtn" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:1px;text-transform:uppercase;font-family:Inter,sans-serif;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+      🗂 History
+    </button>
+    <div class="header-badge">USD • JewelArtix Quotation</div>
+  </div>
+</header>
+
+<div class="app">
+  <!-- ════ LEFT PANEL ════ -->
+  <div class="left-panel">
+
+    <!-- 1. Quotation Info -->
+    <div class="section">
+      <div class="section-title"><span class="num">1</span> Quotation Info</div>
+      <div class="two-col">
+        <div>
+          <label>Design No.</label>
+          <input type="text" id="designNo" placeholder="e.g. JJ_01">
+        </div>
+        <div>
+          <label>Quotation No.</label>
+          <input type="text" id="quotNo" placeholder="e.g. Q-2026-27-060">
+        </div>
+      </div>
+      <div class="two-col">
+        <div>
+          <label>Client Name</label>
+          <input type="text" id="clientName" placeholder="Client / Company">
+        </div>
+        <div>
+          <label>Date</label>
+          <input type="text" id="quotDate" id="quotDate">
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 2. Product Weight & Gold -->
+    <div class="section">
+      <div class="section-title"><span class="num">2</span> Weight & Gold</div>
+
+      <div class="two-col">
+        <div>
+          <label>Net Weight (g)</label>
+          <input type="number" id="netWeight" placeholder="e.g. 8.50" step="0.01" oninput="autoCalcFP()">
+        </div>
+        <div>
+          <label>Gross Weight (g)</label>
+          <input type="number" id="grossWeight" placeholder="e.g. 10.20" step="0.01">
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-top:10px;">
+        <div>
+          <label>Metal Type</label>
+          <select id="goldType" onchange="onMetalTypeChange()">
+            <option>White Gold</option>
+            <option>Yellow Gold</option>
+            <option>Rose Gold</option>
+            <option>Silver</option>
+            <option>Platinum</option>
+          </select>
+        </div>
+        <div>
+          <label>Metal Purity / Type</label>
+          <div id="purityWrapper">
+            <select id="goldPurity" onchange="autoCalcFP()">
+              <option value="0.76">18Kt Gold</option>
+              <option value="0.59">14Kt Gold</option>
+              <option value="0.43">10Kt Gold</option>
+              <option value="0.38">9Kt Gold</option>
+              <option value="silver">Silver</option>
+              <option value="platinum">Platinum</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gold price (shown for gold options) -->
+      <div id="goldPriceSection" style="margin-top:10px;">
+        <label>24Kt Gold Price (USD/g)</label>
+        <input type="number" id="gold24" placeholder="e.g. 82.00" step="0.01" oninput="autoCalcFP()">
+        <div style="margin-top:6px;font-size:10px;color:var(--muted);padding:5px 8px;background:var(--surface);border-radius:4px;border-left:2px solid var(--gold-dark);">
+          9Kt×0.38 &nbsp;|&nbsp; 10Kt×0.43 &nbsp;|&nbsp; 14Kt×0.59 &nbsp;|&nbsp; 18Kt×0.76 &nbsp;(from 24Kt)
+        </div>
+      </div>
+
+      <!-- Silver price (shown for silver) -->
+      <div id="silverPriceSection" style="margin-top:10px;display:none;">
+        <label>Silver Price (USD/g)</label>
+        <input type="number" id="fpSilverPrice" placeholder="e.g. 0.85" step="0.01" oninput="autoCalcFP()">
+      </div>
+
+      <!-- Platinum price (shown for platinum) -->
+      <div id="platinumPriceSection" style="margin-top:10px;display:none;">
+        <label>Platinum Price (USD/g)</label>
+        <input type="number" id="fpPlatinumPrice" placeholder="e.g. 32.00" step="0.01" oninput="autoCalcFP()">
+      </div>
+
+      <!-- Live display -->
+      <div style="margin-top:8px;padding:10px 12px;background:var(--card);border-radius:6px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Metal Price</div>
+          <div id="convertedGoldPrice" style="font-size:18px;font-weight:700;color:var(--gold);margin-top:2px;">—</div>
+          <div id="convertedGoldLabel" style="font-size:10px;color:var(--muted);">USD/g</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Metal Value</div>
+          <div id="goldValueDisplay" style="font-size:18px;font-weight:700;color:var(--gold-light);margin-top:2px;">—</div>
+          <div style="font-size:10px;color:var(--muted);">Net Wt × Metal Price</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 3. Labor -->
+    <div class="section">
+      <div class="section-title"><span class="num">3</span> Labor / Manufacturing</div>
+      <label>Labor Rate (USD/g)</label>
+      <input type="number" id="laborRate" placeholder="e.g. 25.00" step="0.01" oninput="autoCalcFP()">
+      <div style="margin-top:8px;padding:10px 12px;background:var(--card);border-radius:6px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Labor Value</div>
+          <div id="laborValueDisplay" style="font-size:18px;font-weight:700;color:var(--gold-light);margin-top:2px;">—</div>
+          <div style="font-size:10px;color:var(--muted);">Net Wt × Labor Rate</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 4. Diamond Details -->
+    <div class="section">
+      <div class="section-title"><span class="num">4</span> Diamond Details</div>
+      <div class="d-header">
+        <span>Shape</span><span>Size (mm)</span><span>Qty</span><span>Carats</span><span>Price/ct</span><span></span>
+      </div>
+      <div id="dRows"></div>
+      <button class="btn-add" onclick="addDRow()">+ Add Diamond Type</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 5. Images -->
+    <div class="section">
+      <div class="section-title">
+        <span class="num">5</span> Design Images
+        <button onclick="addImageSlot()" style="margin-left:auto;background:rgba(201,168,76,0.15);border:1px solid var(--gold-dark);color:var(--gold);border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;" title="Add image">+</button>
+      </div>
+      <div id="imageSlots"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 6. Notes -->
+    <div class="section">
+      <div class="section-title"><span class="num">6</span> Notes <span style="font-size:9px;color:var(--muted);font-weight:400;letter-spacing:0;">(optional — only appears in PDF if filled)</span></div>
+      <textarea id="fpNotes" rows="3" placeholder="e.g. Special instructions, delivery notes, remarks..." style="resize:vertical;font-size:12px;"></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="btn-generate" onclick="buildQuotation()">✦ Calculate Product Value</button>
+    <button class="btn-generate" onclick="saveQuotation()" style="margin-top:8px;background:linear-gradient(135deg,#1a3a1a,#2d6a2d);border:1px solid #2d6a2d;color:#90EE90;">💾 Save Record</button>
+
+  </div><!-- end left-panel -->
+
+  <!-- ════ RIGHT PANEL ════ -->
+  <div class="right-panel">
+
+    <!-- History Drawer -->
+    <div id="historyDrawer" style="display:none;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;">📋 Saved Quotations</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="clearAllHistory()" style="font-size:10px;color:var(--red);background:none;border:1px solid rgba(229,115,115,0.3);border-radius:4px;padding:3px 8px;cursor:pointer;">Clear All</button>
+          <button onclick="toggleHistory()" style="font-size:10px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 8px;cursor:pointer;">✕ Close</button>
+        </div>
+      </div>
+      <div id="historyList"></div>
+    </div>
+
+    <div id="quotPreview">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:var(--muted);text-align:center;gap:12px;">
+        <div style="font-size:48px;opacity:0.3">💎</div>
+        <div style="font-size:14px;color:var(--muted)">Fill in the details and click<br><strong style="color:var(--gold)">Generate Quotation Preview</strong></div>
+      </div>
+    </div>
+  </div>
+</div><!-- end app -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let uploadedImages = []; // [{src, name}]
+let imageSlotCount = 0;
+let jewelPhotoBase64 = null, jewelPhotoMime = null;
+let dRowCount = 0;
+let diamondPriceList = []; // [{shape, size, price}]
+
+// ── Shape type helpers — MUST be before addDRow() call ─────────
+const DUAL_SHAPES = ['oval','pear','marquise','emerald','baguette'];
+function isDual(shape) { return DUAL_SHAPES.some(s => shape.toLowerCase().includes(s)); }
+
+// ── Metal Type sync with Purity dropdown ──────────────────────
+function onMetalTypeChange() {
+  const metalType  = document.getElementById('goldType').value;
+  const purityWrap = document.getElementById('purityWrapper');
+
+  if (metalType === 'Silver') {
+    window._fpPurityVal = 'silver';
+    purityWrap.innerHTML = '<div style="background:var(--mid);border:1px solid var(--border);border-radius:5px;padding:8px 11px;font-size:14px;color:var(--muted);">— (Silver)</div>';
+  } else if (metalType === 'Platinum') {
+    window._fpPurityVal = 'platinum';
+    purityWrap.innerHTML = '<div style="background:var(--mid);border:1px solid var(--border);border-radius:5px;padding:8px 11px;font-size:14px;color:var(--muted);">— (Platinum)</div>';
+  } else {
+    // Restore dropdown if not already there
+    if (!document.getElementById('goldPurity')) {
+      purityWrap.innerHTML = `<select id="goldPurity" onchange="autoCalcFP()">
+        <option value="0.76">18Kt Gold</option>
+        <option value="0.59">14Kt Gold</option>
+        <option value="0.43">10Kt Gold</option>
+        <option value="0.38">9Kt Gold</option>
+      </select>`;
+    }
+    const sel = document.getElementById('goldPurity');
+    if (sel && (sel.value === 'silver' || sel.value === 'platinum' || !sel.value)) {
+      sel.value = '0.76';
+    }
+    window._fpPurityVal = document.getElementById('goldPurity')?.value || '0.76';
+  }
+  autoCalcFP();
+}
+
+// ── Finished Product Auto-Calc ────────────────────────────────
+function autoCalcFP() {
+  const purityVal  = document.getElementById('goldPurity')?.value || window._fpPurityVal || '0.76';
+  window._fpPurityVal = purityVal; // store for when select is replaced by dash
+  const netWeight  = parseFloat(document.getElementById('netWeight')?.value)   || 0;
+  const laborRate  = parseFloat(document.getElementById('laborRate')?.value)   || 0;
+  const puritySel  = document.getElementById('goldPurity');
+  const purityLabel= puritySel ? puritySel.options[puritySel.selectedIndex]?.text : '18Kt Gold';
+
+  // Show/hide price sections based on selection
+  const isSilver   = purityVal === 'silver';
+  const isPlat     = purityVal === 'platinum';
+  const isGold     = !isSilver && !isPlat;
+
+  document.getElementById('goldPriceSection').style.display    = isGold     ? '' : 'none';
+  document.getElementById('silverPriceSection').style.display  = isSilver   ? '' : 'none';
+  document.getElementById('platinumPriceSection').style.display= isPlat     ? '' : 'none';
+
+  let metalPrice = 0;
+  if (isGold) {
+    const g24    = parseFloat(document.getElementById('gold24')?.value) || 0;
+    const purity = parseFloat(purityVal) || 0.76;
+    metalPrice   = +(g24 * purity).toFixed(2);
+  } else if (isSilver) {
+    metalPrice   = parseFloat(document.getElementById('fpSilverPrice')?.value) || 0;
+  } else if (isPlat) {
+    metalPrice   = parseFloat(document.getElementById('fpPlatinumPrice')?.value) || 0;
+  }
+
+  const metalValue = +(metalPrice * netWeight).toFixed(2);
+  const laborValue = +(laborRate  * netWeight).toFixed(2);
+
+  const gp = document.getElementById('convertedGoldPrice');
+  const gl = document.getElementById('convertedGoldLabel');
+  const gv = document.getElementById('goldValueDisplay');
+  const lv = document.getElementById('laborValueDisplay');
+
+  if (gp) gp.textContent = metalPrice ? `$${metalPrice}` : '—';
+  if (gl) gl.textContent  = metalPrice ? `USD/g (${purityLabel})` : 'USD/g';
+  if (gv) gv.textContent  = metalValue ? `$${metalValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—';
+  if (lv) lv.textContent  = laborValue ? `$${laborValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—';
+}
+
+// ── Init ───────────────────────────────────────────────────────
+document.getElementById('quotDate').value = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+addDRow();
+addImageSlot(); // start with one image slot
+setTimeout(autoRestoreForm, 80);
+
+// ── Labor (simple in FP tool) ──────────────────────────────
+let selectedLaborClient = 0;
+let laborRowIds = [];
+let laborRowCount = 0;
+function addLaborRow() {}
+function removeLaborRow() {}
+function selectLaborClient(id) { selectedLaborClient = id; }
+function getSelectedLabor() {
+  const r = parseFloat(document.getElementById('laborRate')?.value)||0;
+  return { name:'Manual', l18:r, l14:r, l9:r };
+}
+
+// ── Diamond Rows ───────────────────────────────────────────────
+function addDRow(prefill = {}) {
+  dRowCount++;
+  const id = dRowCount;
+  const shape = (prefill.shape || 'Round').trim();
+  const dual  = isDual(shape);
+
+  // Normalize shape to match dropdown options exactly
+  const shapeMap = {
+    'round':'Round','princess':'Princess','oval':'Oval',
+    'marquise':'Marquise','pear':'Pear','emerald':'Emerald',
+    'cushion square':'Cushion Square','cushion':'Cushion Square',
+    'baguette':'Baguette','heart':'Heart'
+  };
+  const shapeLower = shape.toLowerCase();
+  let matchedShape = 'Round';
+  for (const [key, val] of Object.entries(shapeMap)) {
+    if (shapeLower.includes(key) || key.includes(shapeLower)) { matchedShape = val; break; }
+  }
+
+  const div = document.createElement('div');
+  div.id  = `dr-${id}`;
+  div.className = 'd-row';
+
+  const sizeHTML = dual
+    ? `<div class="d-size-dual">
+        <input type="text" id="ds1-${id}" placeholder="W" value="${prefill.sizeW||''}" oninput="onSizeChange(${id})" style="padding:7px 5px;font-size:12px;">
+        <span>×</span>
+        <input type="text"   id="ds2-${id}" placeholder="H"              value="${prefill.sizeH||''}" oninput="onSizeChange(${id})" style="padding:7px 5px;font-size:12px;">
+       </div>`
+    : `<div class="d-size-single">
+        <input type="text"   id="ds1-${id}" placeholder="mm"              value="${prefill.sizeW||''}" oninput="onSizeChange(${id})" style="width:100%;padding:7px 8px;font-size:12px;">
+        <input type="hidden" id="ds2-${id}" value="">
+       </div>`;
+
+  const opts = ['Round','Princess','Oval','Marquise','Pear','Emerald','Cushion Square','Baguette','Heart']
+    .map(o => `<option value="${o}"${o===matchedShape?' selected':''}>${o}</option>`).join('');
+
+  div.innerHTML = `
+    <div class="d-row-grid${dual?' dual':''}">
+      <div><select id="dsh-${id}" onchange="onShapeChange(${id})" style="font-size:12px;padding:7px 5px;">${opts}</select></div>
+      <div id="dsz-${id}">${sizeHTML}</div>
+      <div><input type="number" id="dq-${id}"  placeholder="0"     min="0"    value="${prefill.qty||''}"    style="font-size:12px;padding:7px 5px;"></div>
+      <div><input type="number" id="dc-${id}"  placeholder="0.000" step="0.001" value="${prefill.carats||''}" style="font-size:12px;padding:7px 5px;"></div>
+      <div><input type="number" id="dp-${id}"  placeholder="—"     step="0.01"  value="${prefill.price||''}"  style="font-size:12px;padding:7px 5px;" class="${prefill.price?'price-auto':'price-manual'}" title="${prefill.price?'Price from Excel — editable':'Enter price manually'}"></div>
+      <button class="btn-rm" onclick="document.getElementById('dr-${id}').remove()" title="Remove">✕</button>
+    </div>`;
+
+  document.getElementById('dRows').appendChild(div);
+}
+
+// ── When shape changes, rebuild size inputs ────────────────────
+function onShapeChange(id) {
+  const shape = document.getElementById(`dsh-${id}`).value;
+  const dual  = isDual(shape);
+  const container = document.getElementById(`dsz-${id}`);
+  const grid = container.closest('.d-row-grid');
+  grid.classList.toggle('dual', dual);
+
+  if (dual) {
+    container.innerHTML = `<div class="d-size-dual">
+      <input type="text"   id="ds1-${id}" placeholder="W"              oninput="onSizeChange(${id})" style="padding:7px 5px;font-size:12px;">
+      <span>×</span>
+      <input type="text"   id="ds2-${id}" placeholder="H"              oninput="onSizeChange(${id})" style="padding:7px 5px;font-size:12px;">
+    </div>`;
+  } else {
+    container.innerHTML = `<div class="d-size-single">
+      <input type="text"   id="ds1-${id}" placeholder="mm"              oninput="onSizeChange(${id})" style="width:100%;padding:7px 8px;font-size:12px;">
+      <input type="hidden" id="ds2-${id}" value="">
+    </div>`;
+  }
+  // Clear price when shape changes
+  const priceEl = document.getElementById(`dp-${id}`);
+  priceEl.value = '';
+  priceEl.className = 'price-manual';
+}
+
+// ── When size changes, auto-lookup price ───────────────────────
+function onSizeChange(id) {
+  const shape = document.getElementById(`dsh-${id}`)?.value || '';
+  const w = document.getElementById(`ds1-${id}`)?.value || '';
+  const h = document.getElementById(`ds2-${id}`)?.value || '';
+  if (!w) return;
+  const sizeStr = isDual(shape) ? `${w}x${h}` : `${w}x${w}`;
+  const price = lookupDiamondPrice(shape, sizeStr);
+  const priceEl = document.getElementById(`dp-${id}`);
+  if (price) {
+    priceEl.value = price;
+    priceEl.className = 'price-auto';
+    priceEl.title = 'Price from Excel — editable';
+  } else {
+    // Only clear if it was auto-filled before, don't wipe manual entry
+    if (priceEl.className === 'price-auto') {
+      priceEl.value = '';
+      priceEl.className = 'price-manual';
+      priceEl.title = 'Not found in Excel — enter manually';
+    }
+  }
+}
+
+// ── Tab Switch (3 tabs) ────────────────────────────────────────
+function switchTab(t) {
+  ['manual','paste','photo'].forEach(name => {
+    document.getElementById(`${name}Tab`).style.display = t===name ? '' : 'none';
+    const btn = document.getElementById(`tab-${name}`);
+    if (btn) btn.classList.toggle('active', t===name);
+  });
+}
+
+// ── Diamond Excel Loader ───────────────────────────────────────
+function loadDiamondExcel(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+      const SHAPES = ['round','oval','pear','marquise','cushion','princess','emerald','baguette','heart'];
+
+      // Find first data row (col A = shape name)
+      let dataStart = -1;
+      for (let i = 0; i < raw.length; i++) {
+        const a = (raw[i][0]||'').toString().toLowerCase().trim();
+        if (SHAPES.some(s => a === s || a.startsWith(s))) { dataStart = i; break; }
+      }
+      if (dataStart < 0) {
+        document.getElementById('xlsStatus').innerHTML =
+          `<div class="badge err">✗ Shape not found in Column A</div>`; return;
+      }
+
+      // Detect format by headers above data
+      const headerText = raw.slice(0, dataStart).map(r =>
+        r.map(c=>(c||'').toString().toLowerCase()).join(' ')
+      ).join(' ');
+      const is4Col = headerText.includes('width') && headerText.includes('height');
+
+      diamondPriceList = [];
+
+      for (let i = dataStart; i < raw.length; i++) {
+        const r = raw[i];
+        if (!r || !r[0]) continue;
+        const shape = (r[0]||'').toString().toLowerCase().trim();
+        if (!SHAPES.some(s => shape === s || shape.startsWith(s))) continue;
+
+        if (is4Col) {
+          // 4-col format: A=Shape B=WFrom C=WTo D=HFrom E=HTo F=SzFrom G=SzTo H=Price
+          const wFrom=parseFloat(r[1])||0, wTo=parseFloat(r[2])||0;
+          const hFrom=parseFloat(r[3])||0, hTo=parseFloat(r[4])||0;
+          const price=parseFloat(r[7])||0;
+          if (wFrom===0 && wTo===0) continue;
+          diamondPriceList.push({ shape, wFrom, wTo, hFrom, hTo, size:'', price, mode:'4col' });
+        } else {
+          // Exact format: A=Shape B=Size(WxH) C=Price
+          const size  = normalizeSize((r[1]||'').toString());
+          const price = parseFloat(r[2])||0;
+          if (!size || size==='') continue;
+          diamondPriceList.push({ shape, wFrom:0, wTo:0, hFrom:0, hTo:0, size, price, mode:'exact' });
+        }
+      }
+
+      if (!diamondPriceList.length) {
+        document.getElementById('xlsStatus').innerHTML =
+          `<div class="badge err">✗ No data rows found</div>`; return;
+      }
+
+      const withPrice = diamondPriceList.filter(r => r.price > 0).length;
+      const noPrice   = diamondPriceList.length - withPrice;
+      const fmt       = is4Col ? 'W×H range' : 'exact size';
+      let msg = `✓ ${diamondPriceList.length} records (${fmt})`;
+      if (noPrice === diamondPriceList.length) msg += ` — ⚠ Fill Price column`;
+      else if (noPrice > 0) msg += ` — ${withPrice} priced, ${noPrice} empty`;
+      else msg += ` — all ${withPrice} priced ✓`;
+
+      document.getElementById('xlsStatus').innerHTML =
+        `<div class="badge ${withPrice>0?'ok':'info'}">${msg}</div>`;
+
+    } catch(err) {
+      document.getElementById('xlsStatus').innerHTML =
+        `<div class="badge err">✗ ${err.message}</div>`;
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ── Normalize size string ──────────────────────────────────────
+function normalizeSize(s) {
+  return s.toString().toLowerCase().trim()
+    .replace(/×/g,'x').replace(/\s/g,'').replace(/x+/g,'x');
+}
+
+// ── Lookup price — NO FALLBACK, exact match only ───────────────
+function lookupDiamondPrice(shape, sizeRaw) {
+  if (!diamondPriceList.length) return null;
+  const sh    = shape.toLowerCase().trim();
+  const sz    = normalizeSize(sizeRaw);
+  const parts = sz.split('x');
+  const w     = parseFloat(parts[0]) || 0;
+  const h     = parseFloat(parts[1]) || w;
+
+  // Filter by shape
+  const shapeRows = diamondPriceList.filter(r =>
+    r.shape === sh || r.shape.includes(sh) || sh.includes(r.shape)
+  );
+  if (!shapeRows.length) return null;
+  const pricedRows = shapeRows.filter(r => r.price > 0);
+  if (!pricedRows.length) return null;
+
+  // ── 1. Exact range match ───────────────────────────────────
+  const rows4 = pricedRows.filter(r => r.mode === '4col');
+  if (rows4.length) {
+    const match = rows4.find(r =>
+      w >= r.wFrom && w <= r.wTo && h >= r.hFrom && h <= r.hTo
+    );
+    if (match) return match.price;
+  }
+  const rows2 = pricedRows.filter(r => r.mode === '2range');
+  if (rows2.length) {
+    const dim   = Math.max(w, h);
+    const match = rows2.find(r => dim >= r.wFrom && dim <= r.wTo);
+    if (match) return match.price;
+  }
+  const rowsEx = pricedRows.filter(r => r.mode === 'exact');
+  for (const row of rowsEx) {
+    const p=row.size.split('x'), rw=parseFloat(p[0])||0, rh=parseFloat(p[1])||rw;
+    if (Math.abs(rw-w)<=0.15 && Math.abs(rh-h)<=0.15) return row.price;
+  }
+
+  // ── 2. No exact match — check if EITHER W or H within overall bounds ──
+  let wMin=999, wMax=0, hMin=999, hMax=0;
+  pricedRows.forEach(r => {
+    if (r.mode==='4col'||r.mode==='2range') {
+      wMin=Math.min(wMin,r.wFrom); wMax=Math.max(wMax,r.wTo);
+      hMin=Math.min(hMin,r.hFrom); hMax=Math.max(hMax,r.hTo);
+    } else {
+      const p=r.size.split('x'), rw=parseFloat(p[0])||0, rh=parseFloat(p[1])||rw;
+      wMin=Math.min(wMin,rw); wMax=Math.max(wMax,rw);
+      hMin=Math.min(hMin,rh); hMax=Math.max(hMax,rh);
+    }
+  });
+
+  const wIn = w >= wMin && w <= wMax;
+  const hIn = h >= hMin && h <= hMax;
+
+  // If EITHER dimension within bounds → return average of this shape's prices
+  if (wIn || hIn) {
+    const avg = pricedRows.reduce((s,r) => s+r.price, 0) / pricedRows.length;
+    return Math.round(avg * 100) / 100;
+  }
+
+  // Both outside bounds → empty, manual entry
+  return null;
+}
+
+// ── Parse Paste Data ───────────────────────────────────────────
+function parsePasteData() {
+  const raw = document.getElementById('pasteInput').value.trim();
+  if (!raw) {
+    document.getElementById('pasteStatus').innerHTML = `<div class="badge err">✗ Nothing pasted</div>`; return;
+  }
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Detect header to find column order
+  const headerLine = lines[0].toLowerCase();
+  const hasHeader  = headerLine.includes('shape');
+  const start      = hasHeader ? 1 : 0;
+
+  // Detect if Qty column exists (4 columns vs 3)
+  // Header: Shape,Size,Qty,Carat  OR  Shape,Size,Carat
+  const headerParts = hasHeader ? lines[0].split(',').map(h=>h.trim().toLowerCase()) : [];
+  const qtyColIdx   = headerParts.findIndex(h => h.includes('qty') || h.includes('quantity') || h.includes('pcs') || h.includes('count'));
+  const caratColIdx = headerParts.findIndex(h => h.includes('carat') || h.includes('ct') || h.includes('weight'));
+  const hasQtyCol   = qtyColIdx > -1;
+
+  const parsed = [];
+
+  for (let i = start; i < lines.length; i++) {
+    const firstComma = lines[i].indexOf(',');
+    if (firstComma === -1) continue;
+    const shape = lines[i].substring(0, firstComma).trim();
+    const rest  = lines[i].substring(firstComma + 1);
+
+    // Split remaining by comma
+    const restParts = rest.split(',').map(p => p.trim());
+    if (restParts.length < 2) continue;
+
+    const size = normalizeSize(restParts[0]);
+
+    let qty = 0, carats = 0;
+
+    if (hasQtyCol || restParts.length >= 3) {
+      // Format: Size, Qty, Carat
+      qty    = parseInt(restParts[1])   || 0;
+      carats = parseFloat(restParts[2]) || 0;
+    } else {
+      // Format: Size, Carat (no qty)
+      qty    = 0;
+      carats = parseFloat(restParts[1]) || 0;
+    }
+
+    if (!shape || !size) continue;
+    const sizeParts = size.split('x');
+    const sizeW = sizeParts[0] || '';
+    const sizeH = sizeParts[1] || sizeW;
+    const price = lookupDiamondPrice(shape, size);
+    parsed.push({ shape, size, sizeW, sizeH, qty, carats, price });
+  }
+
+  if (!parsed.length) {
+    document.getElementById('pasteStatus').innerHTML =
+      `<div class="badge err">✗ No valid rows — check format: Shape,Size,Qty,Carat or Shape,Size,Carat</div>`; return;
+  }
+
+  switchTab('manual');
+
+  setTimeout(() => {
+    document.getElementById('dRows').innerHTML = '';
+    dRowCount = 0;
+    let matched = 0;
+    parsed.forEach(d => {
+      addDRow({
+        shape:  d.shape,
+        sizeW:  d.sizeW,
+        sizeH:  isDual(d.shape) ? d.sizeH : '',
+        qty:    d.qty,
+        carats: d.carats,
+        price:  d.price || ''
+      });
+      if (d.price) matched++;
+    });
+    const noPrice = parsed.length - matched;
+    document.getElementById('pasteStatus').innerHTML =
+      `<div class="badge ok">✓ ${parsed.length} rows added${matched ? ` — ${matched} prices auto-filled` : ''}${noPrice ? ` — <span style="color:var(--gold)">${noPrice} need price</span>` : ''}</div>`;
+    document.getElementById('dRows').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 50);
+}
+
+// ── Jewelry Photo ──────────────────────────────────────────────
+function handleJewelPhoto(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    jewelPhotoBase64 = e.target.result.split(',')[1];
+    jewelPhotoMime = file.type;
+    document.getElementById('photoPreview').innerHTML = `<img src="${e.target.result}" alt="Jewelry">`;
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('photoStatus').innerHTML = `<div class="badge info">✓ Ready — click Analyze</div>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzePhoto() {
+  if (!jewelPhotoBase64) return;
+  document.getElementById('aiSpinner').style.display = '';
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('photoStatus').innerHTML = '';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6', max_tokens:1000,
+        messages:[{ role:'user', content:[
+          { type:'image', source:{ type:'base64', media_type:jewelPhotoMime||'image/jpeg', data:jewelPhotoBase64 }},
+          { type:'text', text:`Analyze this jewelry image. Identify ALL diamond/stone groups. For each group estimate: size (mm diameter), shape (Round/Princess/Oval/Marquise/Pear/Emerald/Cushion/Baguette/Heart), quantity count, total carats.
+Respond ONLY as raw JSON array, no backticks, no explanation:
+[{"size":"2.0","shape":"Round","qty":10,"carats":0.30}]
+If no stones visible return: []` }
+        ]}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.find(c=>c.type==='text')?.text || '[]';
+    let diamonds; try { diamonds = JSON.parse(text.replace(/```json|```/g,'').trim()); } catch { diamonds=[]; }
+    document.getElementById('aiSpinner').style.display = 'none';
+    if (!Array.isArray(diamonds)||!diamonds.length) {
+      document.getElementById('photoStatus').innerHTML = `<div class="badge err">✗ No diamonds detected — enter manually</div>`;
+      document.getElementById('analyzeBtn').disabled = false;
+      return;
+    }
+    switchTab('manual');
+    document.getElementById('dRows').innerHTML = ''; dRowCount = 0;
+    diamonds.forEach(d => {
+      const sz = normalizeSize(d.size || d.size_mm || '');
+      const parts = sz.split('x');
+      const price = lookupDiamondPrice(d.shape||'Round', sz);
+      addDRow({
+        shape:  d.shape || 'Round',
+        sizeW:  parts[0] || '',
+        sizeH:  parts[1] || '',
+        qty:    d.qty || '',
+        carats: d.carats || '',
+        price:  price || ''
+      });
+    });
+    document.getElementById('photoStatus').innerHTML = `<div class="badge ok">✓ ${diamonds.length} group(s) detected — check Manual tab</div>`;
+    document.getElementById('analyzeBtn').disabled = false;
+  } catch(err) {
+    document.getElementById('aiSpinner').style.display='none';
+    document.getElementById('analyzeBtn').disabled=false;
+    document.getElementById('photoStatus').innerHTML=`<div class="badge err">✗ ${err.message}</div>`;
+  }
+}
+
+// ── CAD Image ──────────────────────────────────────────────────
+// ── Unlimited Image Slots ─────────────────────────────────────
+
+function addImageSlot() {
+  const id = imageSlotCount++;
+  const slot = document.createElement('div');
+  slot.id = `imgslot-${id}`;
+  slot.style.cssText = 'position:relative;margin-bottom:8px;border:1px dashed var(--border);border-radius:6px;overflow:hidden;';
+  slot.innerHTML = `
+    <div id="imgpreview-${id}" style="min-height:70px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:12px;cursor:pointer;position:relative;" onclick="document.getElementById('imginput-${id}').click()">
+      <input type="file" id="imginput-${id}" accept="image/*" style="display:none;" onchange="loadImageSlot(${id}, this)">
+      <div style="font-size:22px;">🖼️</div>
+      <span style="font-size:11px;color:var(--muted);">Click to upload image</span>
+    </div>
+    <button onclick="removeImageSlot(${id})" style="position:absolute;top:6px;right:6px;background:rgba(229,115,115,0.2);border:1px solid rgba(229,115,115,0.4);color:var(--red);border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;">✕</button>
+  `;
+  document.getElementById('imageSlots').appendChild(slot);
+}
+
+function loadImageSlot(id, input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const src = e.target.result;
+    // Store in uploadedImages array
+    uploadedImages = uploadedImages.filter(img => img.id !== id);
+    uploadedImages.push({ id, src, name: file.name });
+    document.getElementById(`imgpreview-${id}`).innerHTML = `
+      <input type="file" id="imginput-${id}" accept="image/*" style="display:none;" onchange="loadImageSlot(${id}, this)">
+      <img src="${src}" style="max-height:120px;max-width:100%;border-radius:4px;object-fit:contain;cursor:pointer;" onclick="document.getElementById('imginput-${id}').click()" title="Click to replace">
+      <span style="font-size:10px;color:var(--gold);">✓ ${file.name}</span>
+    `;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImageSlot(id) {
+  document.getElementById(`imgslot-${id}`)?.remove();
+  uploadedImages = uploadedImages.filter(img => img.id !== id);
+}
+
+function handleCAD(input) {} // legacy stub
+
+// ── Collect Diamonds ───────────────────────────────────────────
+function collectDiamonds() {
+  const rows = [];
+  document.querySelectorAll('[id^="dr-"]').forEach(el => {
+    const id     = el.id.replace('dr-','');
+    const shape  = document.getElementById(`dsh-${id}`)?.value || 'Round';
+    const w      = document.getElementById(`ds1-${id}`)?.value || '';
+    const h      = document.getElementById(`ds2-${id}`)?.value || '';
+    const qty    = parseInt(document.getElementById(`dq-${id}`)?.value)  || 0;
+    const carats = parseFloat(document.getElementById(`dc-${id}`)?.value) || 0;
+    const price  = parseFloat(document.getElementById(`dp-${id}`)?.value) || 0;
+    // Build display size string
+    const size = isDual(shape)
+      ? (w && h ? `${w}×${h}` : w || h || '—')
+      : (w ? `${w}` : '—');
+    if (carats > 0) {
+      rows.push({ shape, size, qty, carats, price, cost: price * carats });
+    }
+  });
+  return rows;
+}
+
+// ── Format ────────────────────────────────────────────────────
+const fmt = n => n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+// ── Build Quotation ────────────────────────────────────────────
+function buildQuotation() {
+  const purityVal  = document.getElementById('goldPurity')?.value || window._fpPurityVal || '0.76';
+  const isSilver   = purityVal === 'silver';
+  const isPlat     = purityVal === 'platinum';
+  const isGold     = !isSilver && !isPlat;
+  const g24        = parseFloat(document.getElementById('gold24').value)    || 0;
+  const purity     = parseFloat(purityVal) || 0.76;
+  const netWeight  = parseFloat(document.getElementById('netWeight').value)  || 0;
+  const grossWeight= parseFloat(document.getElementById('grossWeight').value)|| 0;
+  const laborRate  = parseFloat(document.getElementById('laborRate').value)  || 0;
+  const goldType   = document.getElementById('goldType').value;
+  const purityLabel= document.getElementById('goldPurity').options[document.getElementById('goldPurity').selectedIndex].text;
+
+  // Calculate metal price based on type
+  let convertedPrice = 0;
+  if (isGold)       convertedPrice = +(g24 * purity).toFixed(4);
+  else if (isSilver) convertedPrice = parseFloat(document.getElementById('fpSilverPrice').value)||0;
+  else if (isPlat)   convertedPrice = parseFloat(document.getElementById('fpPlatinumPrice').value)||0;
+
+  if (!convertedPrice) { alert(`Enter ${isSilver?'Silver':isPlat?'Platinum':'24Kt gold'} price first.`); return; }
+  if (!netWeight)       { alert('Enter Net Weight first.'); return; }
+
+  const goldValue      = +(convertedPrice * netWeight).toFixed(2);
+  const laborValue     = +(laborRate * netWeight).toFixed(2);
+  const diamonds       = collectDiamonds();
+  const totalDiamondCost = diamonds.reduce((s,d)=>s+d.cost, 0);
+  const grandTotal     = goldValue + laborValue + totalDiamondCost;
+
+  const designNo   = document.getElementById('designNo').value   || '—';
+  const quotNo     = document.getElementById('quotNo').value     || '—';
+  const clientName = document.getElementById('clientName').value || '—';
+  const quotDate   = document.getElementById('quotDate').value   || '—';
+
+  window._Q = { g24, purity, purityLabel, netWeight, grossWeight, laborRate, goldType,
+    convertedPrice, goldValue, laborValue, diamonds, totalDiamondCost, grandTotal,
+    designNo, quotNo, clientName, quotDate,
+    // for history display
+    total18: grandTotal, total14: grandTotal, total9: grandTotal };
+
+  // ── Build HTML preview ──
+  let dRows = '';
+  diamonds.forEach(d => {
+    dRows += `<tr><td>${d.shape}${d.size ? ' ' + d.size : ''}</td><td>${d.carats}</td><td>${d.price ? fmt(d.price) : '—'}</td><td>${fmt(d.cost)}</td></tr>`;
+  });
+  if (diamonds.length) dRows += `<tr class="subtotal-row"><td colspan="3">Total Diamond Value (USD)</td><td>${fmt(totalDiamondCost)}</td></tr>`;
+
+  // Build images HTML
+  const fpNotes = document.getElementById('fpNotes')?.value?.trim() || '';
+  const imgsHTML = uploadedImages.length ? `
+    <div class="quot-cad">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:10px;">Design Images — ${designNo}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
+        ${uploadedImages.map(img => `<img src="${img.src}" style="max-height:200px;max-width:45%;border-radius:6px;object-fit:contain;border:1px solid #ddd;">`).join('')}
+      </div>
+    </div>` : '';
+  const notesHTML = fpNotes ? `
+    <div style="background:#fffde7;border-top:2px solid #ffd54f;padding:10px 28px;font-size:11px;color:#555;">
+      <strong style="display:block;margin-bottom:4px;color:#333;">📝 Notes</strong>
+      <p style="white-space:pre-wrap;">${fpNotes}</p>
+    </div>` : '';
+  const cadHTML = imgsHTML; // keep var name for compatibility
+
+  const html = `
+  <div class="quot-paper">
+    <div class="quot-header">
+      <div>
+        <h2>FINISHED PRODUCT</h2>
+        <div style="font-size:11px;color:#aaa;margin-top:4px;letter-spacing:1px;">Currency: USD</div>
+      </div>
+      <div class="quot-header-right">
+        <strong>Ref No.: ${quotNo}</strong><br>
+        Design No.: ${designNo}<br>
+        Date: ${quotDate}<br>
+        Client: ${clientName}
+      </div>
+    </div>
+
+    <div class="quot-meta" style="grid-template-columns:1fr 1.6fr 0.6fr;">
+      <div class="quot-meta-item"><span class="mk">Design No.</span><span class="mv">${designNo}</span></div>
+
+      <!-- Weight display with pie chart -->
+      <div class="quot-meta-item" style="display:flex;align-items:center;gap:14px;">
+        <!-- Pie chart -->
+        <div style="flex-shrink:0;">
+          ${(()=>{
+            const gw = parseFloat(grossWeight)||0;
+            const nw = parseFloat(netWeight)||0;
+            if(!gw||!nw) return '<div style="width:44px;height:44px;border-radius:50%;background:#2C2C2C;border:2px solid #444;"></div>';
+            const pct = Math.min(nw/gw, 1);
+            const r=18, cx=22, cy=22;
+            const angle = pct * 2 * Math.PI;
+            const x = cx + r * Math.sin(angle);
+            const y = cy - r * Math.cos(angle);
+            const large = pct > 0.5 ? 1 : 0;
+            const netPath = pct >= 1
+              ? '<circle cx="22" cy="22" r="18" fill="#56C075"/>'
+              : '<path d="M22,22 L22,4 A18,18 0 ' + large + ',1 ' + x + ',' + y + ' Z" fill="#56C075"/>';
+            return '<svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="#64B5F6"/>' + netPath + '<circle cx="22" cy="22" r="9" fill="white"/></svg>';
+          })()}
+        </div>
+        <!-- Labels -->
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:#64B5F6;display:inline-block;flex-shrink:0;"></span>
+            <span style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#888;">Gross Weight</span>
+            <span style="font-size:15px;font-weight:700;color:#64B5F6;margin-left:4px;">${grossWeight||'—'}g</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:#56C075;display:inline-block;flex-shrink:0;"></span>
+            <span style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#888;">Net Weight</span>
+            <span style="font-size:15px;font-weight:700;color:#56C075;margin-left:4px;">${netWeight}g</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="quot-meta-item"><span class="mk">Currency</span><span class="mv">USD</span></div>
+    </div>
+
+    <div class="quot-body">
+
+      <!-- Gold Details -->
+      <div class="quot-section-title"><span class="icon">🏅</span> 1. GOLD DETAILS</div>
+      <table class="quot-table">
+        <tr><th>Description</th><th>Net Weight (g)</th><th>Price (USD/g)</th><th>Amount (USD)</th></tr>
+        <tr>
+          <td>${purityLabel} ${goldType}<br><span style="font-size:10px;color:#888;">${isGold ? `24Kt $${fmt(g24)} × ${purity} = $${fmt(convertedPrice)}/g` : `$${fmt(convertedPrice)}/g`}</span></td>
+          <td>${netWeight}</td>
+          <td>${fmt(convertedPrice)}</td>
+          <td>${fmt(goldValue)}</td>
+        </tr>
+      </table>
+
+      ${diamonds.length ? `
+      <!-- Diamond Details -->
+      <div class="quot-section-title"><span class="icon">💎</span> 2. DIAMOND DETAILS</div>
+      <table class="quot-table">
+        <tr><th>Description</th><th>Carat (ct)</th><th>Price (USD/ct)</th><th>Amount (USD)</th></tr>
+        ${dRows}
+      </table>` : ''}
+
+      <!-- Labor -->
+      <div class="quot-section-title"><span class="icon">🔧</span> ${diamonds.length?'3':'2'}. LABOR / MANUFACTURING</div>
+      <table class="quot-table">
+        <tr><th>Description</th><th>Rate (USD/g)</th><th>Net Weight (g)</th><th>Amount (USD)</th></tr>
+        <tr>
+          <td>${purityLabel} ${goldType} Labor</td>
+          <td>${fmt(laborRate)}</td>
+          <td>${netWeight}</td>
+          <td>${fmt(laborValue)}</td>
+        </tr>
+      </table>
+
+      <!-- Final Summary -->
+      <div class="quot-section-title" style="margin-top:20px;">📊 FINAL VALUE</div>
+      <div class="quot-summary">
+        <div class="quot-summary-head" style="grid-template-columns:1fr 1fr;">
+          <span>ITEM</span><span style="text-align:right;">AMOUNT (USD)</span>
+        </div>
+        <div class="quot-summary-row" style="grid-template-columns:1fr 1fr;">
+          <span>Gold Value (${purityLabel})</span><span>$ ${fmt(goldValue)}</span>
+        </div>
+        ${diamonds.length ? `<div class="quot-summary-row" style="grid-template-columns:1fr 1fr;">
+          <span>Diamond Value</span><span>$ ${fmt(totalDiamondCost)}</span>
+        </div>` : ''}
+        <div class="quot-summary-row" style="grid-template-columns:1fr 1fr;">
+          <span>Labor / Manufacturing</span><span>$ ${fmt(laborValue)}</span>
+        </div>
+        <div class="quot-summary-row total" style="grid-template-columns:1fr 1fr;">
+          <span>GRAND TOTAL</span><span>$ ${fmt(grandTotal)}</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="quot-notes">
+      <p>⭐ Value calculated based on net weight of ${netWeight}g at ${purityLabel} purity.</p>
+      <p>⭐ 24Kt gold price: $${fmt(g24)}/g | ${purityLabel} converted price: $${fmt(convertedPrice)}/g</p>
+    </div>
+
+    ${cadHTML}
+    ${notesHTML}
+
+    <div class="quot-footer">— Thank you for your trust and business! —</div>
+  </div>
+
+  <button class="btn-pdf" onclick="downloadPDF()">⬇ Download PDF</button>
+  `;
+
+  document.getElementById('quotPreview').innerHTML = html;
+  document.getElementById('quotPreview').scrollIntoView({behavior:'smooth'});
+}
+
+
+// ── PDF Download — single page, exact browser match ────────────
+async function downloadPDF() {
+  const Q = window._Q; if (!Q) return;
+
+  // Load html2canvas dynamically
+  if (!window.html2canvas) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const btn = document.querySelector('.btn-pdf');
+  const origText = btn.innerHTML;
+  btn.innerHTML = '⏳ Generating PDF...';
+  btn.disabled = true;
+
+  try {
+    const el = document.querySelector('.quot-paper');
+    if (!el) { alert('Generate preview first.'); return; }
+
+    // Fix width for consistent render
+    const origWidth = el.style.width;
+    el.style.width = '900px';
+
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: 900,
+      windowWidth: 900,
+    });
+
+    el.style.width = origWidth;
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const imgW = canvas.width;   // px
+    const imgH = canvas.height;  // px
+
+    // Make PDF page exactly the same aspect ratio as the content
+    // Width = A4 width (210mm), height = whatever fits all content
+    const PW = 210; // mm
+    const PH = Math.ceil((imgH / imgW) * PW); // dynamic height — never clips
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      unit: 'mm',
+      format: [PW, PH],   // custom page size = content size
+      orientation: PH > PW ? 'portrait' : 'landscape'
+    });
+
+    // Place full image on single page
+    doc.addImage(imgData, 'JPEG', 0, 0, PW, PH);
+
+    doc.save(`FP_Value_${Q.quotNo}_${Q.designNo}.pdf`);
+
+  } catch(err) {
+    alert('PDF generation failed: ' + err.message);
+  } finally {
+    btn.innerHTML = origText;
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── QUOTATION HISTORY (localStorage) ─────────────────────────
+// ══════════════════════════════════════════════════════════════
+
+const HIST_KEY = 'jewelartix_fp_values';
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveHistory(list) {
+  localStorage.setItem(HIST_KEY, JSON.stringify(list));
+}
+
+// ── Collect all current form data into one object ─────────────
+function collectFormData() {
+  // Gold & Weight
+  const gold24      = document.getElementById('gold24').value;
+  const goldType    = document.getElementById('goldType').value;
+  const goldPurity  = document.getElementById('goldPurity').value;
+  const netWeight   = document.getElementById('netWeight').value;
+  const grossWeight = document.getElementById('grossWeight').value;
+  const laborRate   = document.getElementById('laborRate').value;
+
+  // Quotation info
+  const designNo   = document.getElementById('designNo').value;
+  const quotNo     = document.getElementById('quotNo').value;
+  const clientName = document.getElementById('clientName').value;
+  const quotDate   = document.getElementById('quotDate').value;
+
+  // Labor (simple rate)
+  const laborClients = [{ name:'Manual', l18: laborRate, l14: laborRate, l9: laborRate, selected:true }];
+
+  // Diamonds
+  const diamonds = [];
+  document.querySelectorAll('[id^="dr-"]').forEach(el => {
+    const id = el.id.replace('dr-','');
+    diamonds.push({
+      shape:  document.getElementById(`dsh-${id}`)?.value || '',
+      sizeW:  document.getElementById(`ds1-${id}`)?.value || '',
+      sizeH:  document.getElementById(`ds2-${id}`)?.value || '',
+      qty:    document.getElementById(`dq-${id}`)?.value  || '',
+      carats: document.getElementById(`dc-${id}`)?.value  || '',
+      price:  document.getElementById(`dp-${id}`)?.value  || '',
+    });
+  });
+
+  // Totals from last generated quotation
+  const Q = window._Q || {};
+
+  return {
+    // meta
+    savedAt:    new Date().toISOString(),
+    quotNo:     quotNo || `Q-${Date.now()}`,
+    designNo,
+    clientName,
+    quotDate,
+    // inputs
+    gold24, goldType, goldPurity, netWeight, grossWeight, laborRate,
+    laborClients,
+    diamonds,
+    // computed totals (for display in history)
+    total9:  Q.total9  || 0,
+    total14: Q.total14 || 0,
+    total18: Q.total18 || 0,
+  };
+}
+
+// ── Save current quotation + PDF ─────────────────────────────
+async function saveQuotation() {
+  const quotNo = document.getElementById('quotNo').value?.trim();
+  if (!quotNo) { alert('Please enter a Quotation No. before saving.'); return; }
+
+  const btn = event.target;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⏳ Saving...';
+  btn.disabled = true;
+
+  try {
+    const data = collectFormData();
+
+    // ── Generate PDF and store as base64 ──
+    let pdfBase64 = null;
+    try {
+      const el = document.querySelector('.quot-paper');
+      if (el && window._Q) {
+        // Load html2canvas if needed
+        if (!window.html2canvas) {
+          await new Promise((res,rej) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            s.onload=res; s.onerror=rej; document.head.appendChild(s);
+          });
+        }
+        const origW = el.style.width;
+        el.style.width = '900px';
+        const canvas = await html2canvas(el, {
+          scale:2, useCORS:true, allowTaint:true,
+          backgroundColor:'#ffffff', logging:false, width:900, windowWidth:900
+        });
+        el.style.width = origW;
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.82); // slightly compressed to save space
+        const imgW = canvas.width, imgH = canvas.height;
+        const PW = 210, PH = Math.ceil((imgH/imgW)*PW);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit:'mm', format:[PW,PH], orientation: PH>PW?'portrait':'landscape' });
+        doc.addImage(imgData,'JPEG',0,0,PW,PH);
+        pdfBase64 = doc.output('datauristring'); // full data URI
+      }
+    } catch(pdfErr) {
+      console.warn('PDF save failed:', pdfErr);
+      // Continue saving form data even if PDF fails
+    }
+
+    data.pdfBase64 = pdfBase64;
+    data.hasPdf    = !!pdfBase64;
+
+    const list = getHistory();
+    const existingIdx = list.findIndex(q => q.quotNo === data.quotNo);
+    if (existingIdx >= 0) {
+      if (!confirm(`Quotation "${data.quotNo}" already saved. Overwrite?`)) {
+        btn.innerHTML = orig; btn.disabled = false; return;
+      }
+      list[existingIdx] = data;
+    } else {
+      list.unshift(data);
+    }
+
+    saveHistory(list);
+    renderHistory();
+
+    btn.innerHTML = '✓ Saved + PDF!';
+    btn.style.background = 'linear-gradient(135deg,#1a3a1a,#2d6a2d)';
+    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+
+  } catch(err) {
+    alert('Save failed: ' + err.message);
+    btn.innerHTML = orig; btn.disabled = false;
+  }
+}
+
+// ── Toggle history drawer ─────────────────────────────────────
+function toggleHistory() {
+  const drawer = document.getElementById('historyDrawer');
+  const isOpen = drawer.style.display !== 'none';
+  drawer.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderHistory();
+}
+
+// ── Render history list ───────────────────────────────────────
+function renderHistory() {
+  const list = getHistory();
+  const container = document.getElementById('historyList');
+
+  if (!list.length) {
+    container.innerHTML = `<div class="hist-empty">💎 No saved quotations yet.<br><span style="font-size:11px;">Generate and save a quotation to see it here.</span></div>`;
+    return;
+  }
+
+  const groups = {};
+  list.forEach(q => {
+    const dateKey = new Date(q.savedAt).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(q);
+  });
+
+  let html = '';
+  for (const [date, qs] of Object.entries(groups)) {
+    html += `<div class="hist-group-title">📅 ${date}</div>`;
+    qs.forEach(q => {
+      const total18 = q.total18 ? `$${q.total18.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—';
+      const time    = new Date(q.savedAt).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+      const pdfBtn  = q.hasPdf
+        ? `<button class="hist-btn" style="background:rgba(86,192,117,0.15);color:#56C075;border:1px solid rgba(86,192,117,0.3);" onclick="downloadSavedPdf('${q.quotNo}')">⬇ PDF</button>`
+        : `<button class="hist-btn" style="background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.3);" onclick="regenPdf('${q.quotNo}')">🔄 PDF</button>`;
+      html += `
+        <div class="hist-card">
+          <div class="hist-card-info">
+            <div class="hist-card-title">📄 ${q.quotNo}${q.designNo ? ` — ${q.designNo}` : ''}</div>
+            <div class="hist-card-meta">
+              ${q.clientName ? `👤 ${q.clientName} &nbsp;·&nbsp; ` : ''}
+              🕐 ${time}
+              ${q.diamonds?.length ? ` &nbsp;·&nbsp; 💎 ${q.diamonds.length} diamond types` : ''}
+              ${q.hasPdf ? ` &nbsp;·&nbsp; <span style="color:#56C075;">✓ PDF</span>` : ''}
+            </div>
+          </div>
+          <div style="text-align:right;min-width:70px;">
+            <div class="hist-card-total">${total18}</div>
+            <div style="font-size:9px;color:var(--muted);">18kt total</div>
+          </div>
+          <div class="hist-card-btns" style="flex-direction:column;gap:4px;">
+            <div style="display:flex;gap:4px;">
+              <button class="hist-btn load" onclick="loadQuotation('${q.quotNo}')">Load</button>
+              ${pdfBtn}
+            </div>
+            <button class="hist-btn del" style="width:100%;" onclick="deleteQuotation('${q.quotNo}')">✕ Delete</button>
+          </div>
+        </div>`;
+    });
+  }
+  container.innerHTML = html;
+}
+
+// ── Download saved PDF directly ───────────────────────────────
+function downloadSavedPdf(quotNo) {
+  const list = getHistory();
+  const q = list.find(x => x.quotNo === quotNo);
+  if (!q?.pdfBase64) { alert('No PDF saved for this quotation.'); return; }
+  const a = document.createElement('a');
+  a.href = q.pdfBase64;
+  a.download = `FP_Value_${q.quotNo}_${q.designNo||'JewelArtix'}.pdf`;
+  a.click();
+}
+
+// ── Re-generate PDF from saved data ──────────────────────────
+async function regenPdf(quotNo) {
+  const list = getHistory();
+  const q = list.find(x => x.quotNo === quotNo);
+  if (!q) return;
+  // Load the quotation first, then generate PDF
+  await loadQuotationSilent(q);
+  await buildQuotationSilent(q);
+  await downloadPDF();
+}
+
+// ── Silent load (no UI toggle) ────────────────────────────────
+async function loadQuotationSilent(q) {
+  document.getElementById('quotNo').value     = q.quotNo     || '';
+  document.getElementById('designNo').value   = q.designNo   || '';
+  document.getElementById('clientName').value = q.clientName || '';
+  document.getElementById('quotDate').value   = q.quotDate   || '';
+  document.getElementById('gold24').value      = q.gold24      || '';
+  document.getElementById('goldType').value   = q.goldType   || 'White Gold';
+  if(document.getElementById('goldPurity')) document.getElementById('goldPurity').value = q.goldPurity || '0.76';
+  document.getElementById('netWeight').value  = q.netWeight  || '';
+  document.getElementById('grossWeight').value= q.grossWeight|| '';
+  document.getElementById('laborRate').value  = q.laborRate  || '';
+  autoCalcFP();
+  // No labor rows in FP tool
+  document.getElementById('dRows').innerHTML = '';
+  dRowCount = 0;
+  (q.diamonds||[]).forEach(d => addDRow({ shape:d.shape, sizeW:d.sizeW, sizeH:d.sizeH, qty:d.qty, carats:d.carats, price:d.price }));
+  if (!q.diamonds?.length) addDRow();
+}
+
+// ── Silent build (no scroll) ──────────────────────────────────
+async function buildQuotationSilent(q) {
+  buildQuotation();
+  await new Promise(r => setTimeout(r, 300));
+}
+
+// ── Load a saved quotation back into form ─────────────────────
+function loadQuotation(quotNo) {
+  const list = getHistory();
+  const q    = list.find(x => x.quotNo === quotNo);
+  if (!q) return;
+
+  // Quotation info
+  document.getElementById('quotNo').value     = q.quotNo     || '';
+  document.getElementById('designNo').value   = q.designNo   || '';
+  document.getElementById('clientName').value = q.clientName || '';
+  document.getElementById('quotDate').value   = q.quotDate   || '';
+
+  // Gold
+  document.getElementById('gold24').value    = q.gold24    || '';
+  document.getElementById('goldType').value  = q.goldType  || 'White Gold';
+  autoCalcFP();
+
+  // Labor clients — rebuild rows
+  // No labor client rows in FP tool
+
+  // Diamonds — rebuild rows
+  document.getElementById('dRows').innerHTML = '';
+  dRowCount = 0;
+  (q.diamonds || []).forEach(d => {
+    addDRow({
+      shape:  d.shape,
+      sizeW:  d.sizeW,
+      sizeH:  d.sizeH,
+      qty:    d.qty,
+      carats: d.carats,
+      price:  d.price
+    });
+  });
+  if (!q.diamonds?.length) addDRow();
+
+  toggleHistory();
+
+  // Flash confirm
+  const btn = document.querySelector('.btn-generate');
+  const orig = btn.innerHTML;
+  btn.innerHTML = `✓ Loaded: ${quotNo}`;
+  setTimeout(() => { btn.innerHTML = orig; }, 1800);
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Delete one quotation ──────────────────────────────────────
+function deleteQuotation(quotNo) {
+  if (!confirm(`Delete quotation "${quotNo}"?`)) return;
+  const list = getHistory().filter(q => q.quotNo !== quotNo);
+  saveHistory(list);
+  renderHistory();
+}
+
+// ── Clear all history ─────────────────────────────────────────
+function clearAllHistory() {
+  if (!confirm('Delete ALL saved quotations? This cannot be undone.')) return;
+  localStorage.removeItem(HIST_KEY);
+  renderHistory();
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── AUTO-SAVE / RESTORE ───────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+const FORM_KEY     = 'jewelartix_form_fp';
+const IMAGES_KEY   = 'jewelartix_images_fp';
+
+// ── Undo / Redo ───────────────────────────────────────────────
+let undoStack = [], redoStack = [], undoPaused = false;
+
+function captureFormSnapshot() {
+  const data = {};
+  ['quotNo','designNo','clientName','quotDate','gold24','goldType','goldPurity','netWeight','grossWeight','laborRate','fpSilverPrice','fpPlatinumPrice'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
+  data.fpNotes = document.getElementById('fpNotes')?.value||'';
+  data.diamonds = [];
+  document.querySelectorAll('[id^="dr-"]').forEach(el => {
+    const id = el.id.replace('dr-','');
+    data.diamonds.push({
+      shape:  document.getElementById(`dsh-${id}`)?.value||'',
+      sizeW:  document.getElementById(`ds1-${id}`)?.value||'',
+      sizeH:  document.getElementById(`ds2-${id}`)?.value||'',
+      qty:    document.getElementById(`dq-${id}`)?.value||'',
+      carats: document.getElementById(`dc-${id}`)?.value||'',
+      price:  document.getElementById(`dp-${id}`)?.value||'',
+    });
+  });
+  return data;
+}
+
+function applySnapshot(data) {
+  undoPaused = true;
+  ['quotNo','designNo','clientName','quotDate','gold24','goldType','goldPurity','netWeight','grossWeight','laborRate','fpSilverPrice','fpPlatinumPrice'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && data[id] !== undefined) el.value = data[id];
+  });
+  autoCalcFP();
+  if (data.fpNotes !== undefined) { const el = document.getElementById('fpNotes'); if(el) el.value = data.fpNotes; }
+  if (data.diamonds?.length) {
+    document.getElementById('dRows').innerHTML = ''; dRowCount = 0;
+    data.diamonds.forEach(d => addDRow({ shape:d.shape, sizeW:d.sizeW, sizeH:d.sizeH, qty:d.qty, carats:d.carats, price:d.price }));
+  }
+  undoPaused = false;
+  autoSaveForm();
+}
+
+function snapshotForUndo() {
+  if (undoPaused) return;
+  const snap = captureFormSnapshot();
+  if (undoStack.length && JSON.stringify(undoStack[undoStack.length-1]) === JSON.stringify(snap)) return;
+  undoStack.push(snap);
+  if (undoStack.length > 50) undoStack.shift();
+  redoStack = [];
+}
+
+function doUndo() {
+  if (undoStack.length < 2) return;
+  redoStack.push(undoStack.pop());
+  applySnapshot(undoStack[undoStack.length-1]);
+  showUndoToast('↩ Undo');
+}
+
+function doRedo() {
+  if (!redoStack.length) return;
+  const snap = redoStack.pop();
+  undoStack.push(snap);
+  applySnapshot(snap);
+  showUndoToast('↪ Redo');
+}
+
+function showUndoToast(msg) {
+  let t = document.getElementById('undoToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'undoToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:var(--gold);border:1px solid var(--gold-dark);padding:8px 20px;border-radius:20px;font-size:12px;letter-spacing:1px;z-index:9999;opacity:0;transition:opacity 0.2s;pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.opacity = '0', 1200);
+}
+
+document.addEventListener('keydown', e => {
+  const isCtrl = e.ctrlKey || e.metaKey;
+  if (isCtrl && e.key === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
+  if (isCtrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); doRedo(); }
+});
+
+// ── Auto-Save ─────────────────────────────────────────────────
+function autoSaveForm() {
+  try {
+    localStorage.setItem(FORM_KEY, JSON.stringify(captureFormSnapshot()));
+  } catch(e) { console.warn('AutoSave failed:', e); }
+}
+
+// ── Save images to localStorage ───────────────────────────────
+function saveImages() {
+  try {
+    // Save only src + name (base64 already in src)
+    const imgs = uploadedImages.map(img => ({ id: img.id, src: img.src, name: img.name }));
+    localStorage.setItem(IMAGES_KEY, JSON.stringify(imgs));
+  } catch(e) { console.warn('Image save failed — may be too large:', e); }
+}
+
+// ── Patch loadImageSlot to also save images ───────────────────
+const _origLoadImageSlot = loadImageSlot;
+function loadImageSlot(id, input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const src = e.target.result;
+    uploadedImages = uploadedImages.filter(img => img.id !== id);
+    uploadedImages.push({ id, src, name: file.name });
+    document.getElementById(`imgpreview-${id}`).innerHTML = `
+      <input type="file" id="imginput-${id}" accept="image/*" style="display:none;" onchange="loadImageSlot(${id}, this)">
+      <img src="${src}" style="max-height:120px;max-width:100%;border-radius:4px;object-fit:contain;cursor:pointer;" onclick="document.getElementById('imginput-${id}').click()" title="Click to replace">
+      <span style="font-size:10px;color:var(--gold);">✓ ${file.name}</span>
+    `;
+    saveImages(); // save after each upload
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Patch removeImageSlot to also save images ─────────────────
+const _origRemoveImageSlot = removeImageSlot;
+function removeImageSlot(id) {
+  document.getElementById(`imgslot-${id}`)?.remove();
+  uploadedImages = uploadedImages.filter(img => img.id !== id);
+  saveImages();
+}
+
+// ── Auto-Restore ──────────────────────────────────────────────
+function autoRestoreForm() {
+  try {
+    // Restore form fields
+    const raw = localStorage.getItem(FORM_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      ['quotNo','designNo','clientName','quotDate','gold24','goldType','goldPurity','netWeight','grossWeight','laborRate','fpSilverPrice','fpPlatinumPrice'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && data[id] !== undefined) el.value = data[id];
+      });
+      autoCalcFP();
+      if (data.fpNotes) { const el = document.getElementById('fpNotes'); if(el) el.value = data.fpNotes; }
+      if (data.diamonds?.length) {
+        document.getElementById('dRows').innerHTML = ''; dRowCount = 0;
+        data.diamonds.forEach(d => addDRow({ shape:d.shape, sizeW:d.sizeW, sizeH:d.sizeH, qty:d.qty, carats:d.carats, price:d.price }));
+      }
+    }
+
+    // Restore images
+    const imgRaw = localStorage.getItem(IMAGES_KEY);
+    if (imgRaw) {
+      const imgs = JSON.parse(imgRaw);
+      if (imgs?.length) {
+        // Clear existing slots first
+        document.getElementById('imageSlots').innerHTML = '';
+        uploadedImages = []; imageSlotCount = 0;
+        imgs.forEach(img => {
+          const id = imageSlotCount++;
+          const slot = document.createElement('div');
+          slot.id = `imgslot-${id}`;
+          slot.style.cssText = 'position:relative;margin-bottom:8px;border:1px dashed var(--border);border-radius:6px;overflow:hidden;';
+          slot.innerHTML = `
+            <div id="imgpreview-${id}" style="min-height:70px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:12px;position:relative;">
+              <input type="file" id="imginput-${id}" accept="image/*" style="display:none;" onchange="loadImageSlot(${id}, this)">
+              <img src="${img.src}" style="max-height:120px;max-width:100%;border-radius:4px;object-fit:contain;cursor:pointer;" onclick="document.getElementById('imginput-${id}').click()" title="Click to replace">
+              <span style="font-size:10px;color:var(--gold);">✓ ${img.name}</span>
+            </div>
+            <button onclick="removeImageSlot(${id})" style="position:absolute;top:6px;right:6px;background:rgba(229,115,115,0.2);border:1px solid rgba(229,115,115,0.4);color:var(--red);border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1;">✕</button>
+          `;
+          document.getElementById('imageSlots').appendChild(slot);
+          uploadedImages.push({ id, src: img.src, name: img.name });
+        });
+        // Add one empty slot at end for adding more
+        addImageSlot();
+      }
+    }
+
+    // Initial undo snapshot
+    setTimeout(() => { undoStack = [captureFormSnapshot()]; }, 100);
+
+  } catch(e) { console.warn('AutoRestore failed:', e); }
+}
+
+document.addEventListener('input',  () => { snapshotForUndo(); autoSaveForm(); }, true);
+document.addEventListener('change', () => { snapshotForUndo(); autoSaveForm(); }, true);
+
+
+</script>
+</body>
+</html>
