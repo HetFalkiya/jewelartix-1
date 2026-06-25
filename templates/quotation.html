@@ -2078,6 +2078,160 @@ document.addEventListener('input',  () => { snapshotForUndo(); autoSaveForm(); }
 document.addEventListener('change', () => { snapshotForUndo(); autoSaveForm(); }, true);
 
 
+
+// ══════════════════════════════════════════════════════════════
+// ── CLOUD API ─────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+const API_BASE = window.location.origin;
+
+async function apiGet(path) {
+  try { const r=await fetch(API_BASE+path); return r.ok?await r.json():null; } catch(e){return null;}
+}
+async function apiPost(path,data) {
+  try { const r=await fetch(API_BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return await r.json(); } catch(e){return null;}
+}
+async function apiDelete(path) {
+  try { const r=await fetch(API_BASE+path,{method:'DELETE'});return await r.json(); } catch(e){return null;}
+}
+
+let _saveTimer=null;
+async function autoSaveForm() {
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(async function(){try{await apiPost('/api/formstate/quot',captureFormSnapshot());}catch(e){}},800);
+}
+
+async function autoRestoreForm() {
+  try {
+    const sett=await apiGet('/api/settings/labor_quot');
+    if(sett&&sett.laborClients&&sett.laborClients.length){document.getElementById('laborRows').innerHTML='';laborRowIds=[];laborRowCount=0;sett.laborClients.forEach(function(lc){addLaborRow();const id=laborRowIds[laborRowIds.length-1];document.getElementById('lname-'+id).value=lc.name||'';document.getElementById('l18-'+id).value=lc.l18||'';document.getElementById('l14-'+id).value=lc.l14||'';document.getElementById('l9-'+id).value=lc.l9||'';const ls=document.getElementById('lsilver-'+id);if(ls)ls.value=lc.lsilver||'';const lp=document.getElementById('lplat-'+id);if(lp)lp.value=lc.lplat||'';if(lc.selected)selectLaborClient(id);});}
+    const exd=await apiGet('/api/settings/excel_quot');if(exd&&exd.base64){window._excelBase64=exd.base64;try{const bin=atob(exd.base64.split(',')[1]||exd.base64);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);const wb=XLSX.read(bytes,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});_parseExcelRaw(raw);document.getElementById('xlsStatus').innerHTML='<div class="badge ok">✓ '+diamondPriceList.length+' records restored</div>';showRemoveExcelBtn();}catch(e){}}
+    const data=await apiGet('/api/formstate/quot');
+    if(!data)return;
+    const fields=['quotNo','designNo','clientName','quotDate','gold24','goldType','wMatrix9','silverPrice','platinumPrice'];
+    fields.forEach(function(id){const el=document.getElementById(id);if(el&&data[id]!==undefined)el.value=data[id];});
+    autoCalcGold();autoCalcWeights();
+    
+    if(data.diamonds&&data.diamonds.length){
+      document.getElementById('dRows').innerHTML='';dRowCount=0;
+      data.diamonds.forEach(function(d){addDRow({shape:d.shape,sizeW:d.sizeW,sizeH:d.sizeH,qty:d.qty,carats:d.carats,price:d.price,stoneType:d.stoneType});});
+    }
+    setTimeout(function(){undoStack=[captureFormSnapshot()];},100);
+  } catch(e){console.warn('Cloud restore failed:',e);}
+}
+
+async function saveQuotation() {
+  const quotNo=document.getElementById('quotNo').value&&document.getElementById('quotNo').value.trim();
+  if(!quotNo){alert('Please enter a Quotation No.');return;}
+  const ev=window.event;
+  const btn=ev&&ev.target||document.querySelector('.btn-generate');
+  const orig=btn&&btn.innerHTML||'';
+  if(btn){btn.innerHTML='⏳ Saving...';btn.disabled=true;}
+  try {
+    const data=captureFormSnapshot();
+    let pdfBase64=null;
+    const el=document.querySelector('.quot-paper');
+    if(el){
+      if(!window.html2canvas)await new Promise(function(res,rej){const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+      const ow=el.style.width;el.style.width='900px';
+      const canvas=await html2canvas(el,{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',logging:false,width:900,windowWidth:900});
+      el.style.width=ow;
+      const imgData=canvas.toDataURL('image/jpeg',0.82);
+      const PW=210,PH=Math.ceil((canvas.height/canvas.width)*PW);
+      const j=window.jspdf;const doc=new j.jsPDF({unit:'mm',format:[PW,PH]});
+      doc.addImage(imgData,'JPEG',0,0,PW,PH);
+      pdfBase64=doc.output('datauristring');
+    }
+    data.pdfBase64=pdfBase64;data.hasPdf=!!pdfBase64;
+    await apiPost('/api/quotations',data);
+    await renderHistory();
+    if(btn){btn.innerHTML='✓ Saved to Cloud!';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);}
+  } catch(e){if(btn){btn.innerHTML=orig;btn.disabled=false;}alert('Save failed: '+e.message);}
+}
+
+async function renderHistory() {
+  const list=await apiGet('/api/quotations')||[];
+  const container=document.getElementById('historyList');
+  if(!list.length){container.innerHTML='<div class="hist-empty">💎 No saved quotations yet.</div>';return;}
+  const groups={};
+  list.forEach(function(q){
+    const dk=new Date(q.updated_at||q.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    if(!groups[dk])groups[dk]=[];groups[dk].push(q);
+  });
+  let html='';
+  for(const date in groups){
+    html+='<div class="hist-group-title">📅 '+date+'</div>';
+    groups[date].forEach(function(q){
+      const qd=q.data||q;
+      const t18=qd.total18?'$'+parseFloat(qd.total18).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+      const tm=new Date(q.updated_at||q.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      const qno=q.quot_no||q.quotNo||'';
+      const dno=q.design_no||q.designNo||'';
+      const cln=q.client_name||q.clientName||'';
+      const pdfBtn=q.has_pdf
+        ?'<button class="hist-btn" style="background:rgba(86,192,117,0.15);color:#56C075;border:1px solid rgba(86,192,117,0.3);" onclick="downloadSavedPdf(\''+qno+'\')">⬇ PDF</button>'
+        :'<button class="hist-btn" style="background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.3);" onclick="regenPdf(\''+qno+'\')">🔄 PDF</button>';
+      html+='<div class="hist-card"><div class="hist-card-info"><div class="hist-card-title">📄 '+qno+(dno?' — '+dno:'')+'</div><div class="hist-card-meta">'+(cln?'👤 '+cln+' &nbsp;·&nbsp; ':'')+' 🕐 '+tm+(q.has_pdf?' &nbsp;·&nbsp; <span style="color:#56C075;">✓ PDF</span>':'')+'</div></div><div style="text-align:right;min-width:70px;"><div class="hist-card-total">'+t18+'</div><div style="font-size:9px;color:var(--muted);">total</div></div><div class="hist-card-btns" style="flex-direction:column;gap:4px;"><div style="display:flex;gap:4px;"><button class="hist-btn load" onclick="loadQuotation(\''+qno+'\')">Load</button>'+pdfBtn+'</div><button class="hist-btn del" style="width:100%;" onclick="deleteQuotation(\''+qno+'\')">✕ Delete</button></div></div>';
+    });
+  }
+  container.innerHTML=html;
+}
+
+async function loadQuotation(quotNo) {
+  const q=await apiGet('/api/quotations/'+encodeURIComponent(quotNo));
+  if(!q)return;
+  const data=q.data||q;
+  const fields=['quotNo','designNo','clientName','quotDate','gold24','goldType','wMatrix9','silverPrice','platinumPrice'];
+  fields.forEach(function(id){const el=document.getElementById(id);if(el&&data[id]!==undefined)el.value=data[id];});
+  autoCalcGold();autoCalcWeights();
+  
+  if(data.laborClients&&data.laborClients.length){document.getElementById('laborRows').innerHTML='';laborRowIds=[];laborRowCount=0;data.laborClients.forEach(function(lc){addLaborRow();const id=laborRowIds[laborRowIds.length-1];document.getElementById('lname-'+id).value=lc.name||'';document.getElementById('l18-'+id).value=lc.l18||'';document.getElementById('l14-'+id).value=lc.l14||'';document.getElementById('l9-'+id).value=lc.l9||'';const ls=document.getElementById('lsilver-'+id);if(ls)ls.value=lc.lsilver||'';const lp=document.getElementById('lplat-'+id);if(lp)lp.value=lc.lplat||'';if(lc.selected)selectLaborClient(id);});}
+  if(data.diamonds&&data.diamonds.length){document.getElementById('dRows').innerHTML='';dRowCount=0;data.diamonds.forEach(function(d){addDRow({shape:d.shape,sizeW:d.sizeW,sizeH:d.sizeH,qty:d.qty,carats:d.carats,price:d.price,stoneType:d.stoneType});});}
+  toggleHistory();
+}
+
+async function deleteQuotation(quotNo) {
+  if(!confirm('Delete "'+quotNo+'"?'))return;
+  await apiDelete('/api/quotations/'+encodeURIComponent(quotNo));
+  await renderHistory();
+}
+
+async function downloadSavedPdf(quotNo) {
+  const q=await apiGet('/api/quotations/'+encodeURIComponent(quotNo));
+  if(!q||!q.pdf_base64){alert('No PDF saved.');return;}
+  const a=document.createElement('a');a.href=q.pdf_base64;a.download='Quotation_'+quotNo+'.pdf';a.click();
+}
+
+async function clearAllHistory() {
+  if(!confirm('Delete ALL saved quotations?'))return;
+  const list=await apiGet('/api/quotations')||[];
+  await Promise.all(list.map(function(q){return apiDelete('/api/quotations/'+encodeURIComponent(q.quot_no||q.quotNo));}));
+  await renderHistory();
+}
+
+function toggleHistory() {
+  const drawer=document.getElementById('historyDrawer');
+  const isOpen=drawer.style.display!=='none';
+  drawer.style.display=isOpen?'none':'block';
+  if(!isOpen)renderHistory();
+}
+
+async function manualSaveSettings() {
+  const btn=document.getElementById('settingsSaveBtn');
+  const orig=btn&&btn.innerHTML||'';
+  if(btn){btn.innerHTML='⏳ Saving...';btn.disabled=true;}
+  try {
+    await apiPost('/api/settings/labor_quot',{laborClients:laborRowIds.map(function(id){return{name:document.getElementById('lname-'+id)&&document.getElementById('lname-'+id).value||'',l18:document.getElementById('l18-'+id)&&document.getElementById('l18-'+id).value||'',l14:document.getElementById('l14-'+id)&&document.getElementById('l14-'+id).value||'',l9:document.getElementById('l9-'+id)&&document.getElementById('l9-'+id).value||'',lsilver:document.getElementById('lsilver-'+id)&&document.getElementById('lsilver-'+id).value||'',lplat:document.getElementById('lplat-'+id)&&document.getElementById('lplat-'+id).value||'',selected:id===selectedLaborClient};})});if(window._excelBase64)await apiPost('/api/settings/excel_quot',{base64:window._excelBase64});
+    if(btn){btn.innerHTML='✓ Saved to Cloud!';btn.style.color='#56C075';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;btn.style.color='#90EE90';},2000);}
+  } catch(e){if(btn){btn.innerHTML=orig;btn.disabled=false;}}
+}
+
+async function removeExcel() {
+  diamondPriceList=[];window._excelBase64=null;
+  await apiDelete('/api/settings/excel_quot');
+  document.getElementById('xlsStatus').innerHTML='<div class="badge info">Excel removed</div>';
+  document.getElementById('removeExcelBtn').style.display='none';
+}
+
 </script>
 </body>
 </html>
