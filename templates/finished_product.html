@@ -306,7 +306,37 @@ select option { background: var(--card); }
 
     <div class="divider"></div>
 
-    <!-- 2. Product Weight & Gold -->
+    <!-- CURRENCY CONVERTER -->
+    <div class="section" style="background:rgba(201,168,76,0.06);border:1px solid var(--gold-dark);border-radius:8px;padding:14px;">
+      <div class="section-title" style="margin-bottom:10px;">💱 Currency Output</div>
+      <div class="two-col">
+        <div>
+          <label>Output Currency</label>
+          <select id="outputCurrency" onchange="onCurrencyChange()" style="font-size:12px;">
+            <option value="USD">USD ($)</option>
+            <option value="AUD">AUD (A$)</option>
+            <option value="AED">AED (د.إ)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="CAD">CAD (C$)</option>
+            <option value="RMB">RMB (¥)</option>
+            <option value="HKD">HKD (HK$)</option>
+            <option value="INR">INR (₹) — No conversion</option>
+            <option value="Custom">Custom</option>
+          </select>
+          <input type="text" id="customCurrencyName" placeholder="Currency code e.g. SGD" style="display:none;margin-top:6px;font-size:12px;">
+        </div>
+        <div>
+          <label id="exchangeRateLabel">1 INR = ___ USD</label>
+          <input type="number" id="exchangeRate" placeholder="e.g. 0.012" step="0.000001" oninput="autoCalcFP()" style="border-color:var(--gold-dark);">
+          <div style="margin-top:4px;font-size:10px;color:var(--muted);">Enter exchange rate — all INR prices auto-convert</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+        <!-- 2. Product Weight & Gold -->
     <div class="section">
       <div class="section-title"><span class="num">2</span> Weight & Gold</div>
 
@@ -349,8 +379,8 @@ select option { background: var(--card); }
 
       <!-- Gold price (shown for gold options) -->
       <div id="goldPriceSection" style="margin-top:10px;">
-        <label>24Kt Gold Price (USD/g)</label>
-        <input type="number" id="gold24" placeholder="e.g. 82.00" step="0.01" oninput="autoCalcFP()">
+        <label>24Kt Gold Price (₹/g — INR)</label>
+        <input type="number" id="gold24" placeholder="e.g. 6800" step="0.01" oninput="autoCalcFP()">
         <div style="margin-top:6px;font-size:10px;color:var(--muted);padding:5px 8px;background:var(--surface);border-radius:4px;border-left:2px solid var(--gold-dark);">
           9Kt×0.38 &nbsp;|&nbsp; 10Kt×0.43 &nbsp;|&nbsp; 14Kt×0.59 &nbsp;|&nbsp; 18Kt×0.76 &nbsp;(from 24Kt)
         </div>
@@ -358,14 +388,14 @@ select option { background: var(--card); }
 
       <!-- Silver price (shown for silver) -->
       <div id="silverPriceSection" style="margin-top:10px;display:none;">
-        <label>Silver Price (USD/g)</label>
-        <input type="number" id="fpSilverPrice" placeholder="e.g. 0.85" step="0.01" oninput="autoCalcFP()">
+        <label>Silver Price (₹/g — INR)</label>
+        <input type="number" id="fpSilverPrice" placeholder="e.g. 85" step="0.01" oninput="autoCalcFP()">
       </div>
 
       <!-- Platinum price (shown for platinum) -->
       <div id="platinumPriceSection" style="margin-top:10px;display:none;">
-        <label>Platinum Price (USD/g)</label>
-        <input type="number" id="fpPlatinumPrice" placeholder="e.g. 32.00" step="0.01" oninput="autoCalcFP()">
+        <label>Platinum Price (₹/g — INR)</label>
+        <input type="number" id="fpPlatinumPrice" placeholder="e.g. 2700" step="0.01" oninput="autoCalcFP()">
       </div>
 
       <!-- Live display -->
@@ -373,7 +403,7 @@ select option { background: var(--card); }
         <div>
           <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Metal Price</div>
           <div id="convertedGoldPrice" style="font-size:18px;font-weight:700;color:var(--gold);margin-top:2px;">—</div>
-          <div id="convertedGoldLabel" style="font-size:10px;color:var(--muted);">USD/g</div>
+          <div id="convertedGoldLabel" style="font-size:10px;color:var(--muted);">—/g</div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Metal Value</div>
@@ -388,7 +418,7 @@ select option { background: var(--card); }
     <!-- 3. Labor -->
     <div class="section">
       <div class="section-title"><span class="num">3</span> Labor / Manufacturing</div>
-      <label>Labor Rate (USD/g)</label>
+      <label>Labor Rate (₹/g — INR)</label>
       <input type="number" id="laborRate" placeholder="e.g. 25.00" step="0.01" oninput="autoCalcFP()">
       <div style="margin-top:8px;padding:10px 12px;background:var(--card);border-radius:6px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
         <div>
@@ -503,6 +533,44 @@ function onMetalTypeChange() {
   autoCalcFP();
 }
 
+// ── Currency helpers ───────────────────────────────────────────
+function getCurrencyCode() {
+  const cur = document.getElementById('outputCurrency')?.value || 'USD';
+  if (cur === 'Custom') return document.getElementById('customCurrencyName')?.value || 'USD';
+  return cur;
+}
+function getCurrencySymbol() {
+  const map = {USD:'$',AUD:'A$',AED:'د.إ',EUR:'€',GBP:'£',CAD:'C$',RMB:'¥',HKD:'HK$',INR:'₹'};
+  const cur = getCurrencyCode();
+  return map[cur] || cur;
+}
+function getExchangeRate() {
+  const cur = document.getElementById('outputCurrency')?.value || 'USD';
+  if (cur === 'INR') return 1;
+  return parseFloat(document.getElementById('exchangeRate')?.value) || 0;
+}
+function convertINR(inrAmount) {
+  const rate = getExchangeRate();
+  if (!rate) return 0;
+  return inrAmount * rate;
+}
+function onCurrencyChange() {
+  const cur = document.getElementById('outputCurrency')?.value || 'USD';
+  const customInput = document.getElementById('customCurrencyName');
+  if (customInput) customInput.style.display = cur === 'Custom' ? 'block' : 'none';
+  const code = getCurrencyCode();
+  const lbl = document.getElementById('exchangeRateLabel');
+  if (lbl) lbl.textContent = '1 INR = ___ ' + code;
+  if (cur === 'INR') {
+    const r = document.getElementById('exchangeRate');
+    if (r) { r.value = '1'; r.disabled = true; }
+  } else {
+    const r = document.getElementById('exchangeRate');
+    if (r) { if(r.value==='1') r.value=''; r.disabled = false; }
+  }
+  autoCalcFP();
+}
+
 // ── Finished Product Auto-Calc ────────────────────────────────
 function autoCalcFP() {
   const purityVal  = document.getElementById('goldPurity')?.value || window._fpPurityVal || '0.76';
@@ -521,29 +589,38 @@ function autoCalcFP() {
   document.getElementById('silverPriceSection').style.display  = isSilver   ? '' : 'none';
   document.getElementById('platinumPriceSection').style.display= isPlat     ? '' : 'none';
 
+  const rate       = getExchangeRate();
+  const sym        = getCurrencySymbol();
+  const curCode    = getCurrencyCode();
+
   let metalPrice = 0;
   if (isGold) {
-    const g24    = parseFloat(document.getElementById('gold24')?.value) || 0;
-    const purity = parseFloat(purityVal) || 0.76;
-    metalPrice   = +(g24 * purity).toFixed(2);
+    const g24inr  = parseFloat(document.getElementById('gold24')?.value) || 0;
+    const purity  = parseFloat(purityVal) || 0.76;
+    metalPrice    = +((g24inr * (rate||1)) * purity).toFixed(2);
   } else if (isSilver) {
-    metalPrice   = parseFloat(document.getElementById('fpSilverPrice')?.value) || 0;
+    metalPrice    = convertINR(parseFloat(document.getElementById('fpSilverPrice')?.value) || 0);
   } else if (isPlat) {
-    metalPrice   = parseFloat(document.getElementById('fpPlatinumPrice')?.value) || 0;
+    metalPrice    = convertINR(parseFloat(document.getElementById('fpPlatinumPrice')?.value) || 0);
   }
 
+  const laborRateOut = convertINR(laborRate);
   const metalValue = +(metalPrice * netWeight).toFixed(2);
-  const laborValue = +(laborRate  * netWeight).toFixed(2);
+  const laborValue = +(laborRateOut * netWeight).toFixed(2);
+
+  window._fpSym = sym; window._fpCurCode = curCode;
+  window._fpMetalPrice = metalPrice; window._fpMetalValue = metalValue;
+  window._fpLaborValue = laborValue; window._fpLaborRateOut = laborRateOut;
 
   const gp = document.getElementById('convertedGoldPrice');
   const gl = document.getElementById('convertedGoldLabel');
   const gv = document.getElementById('goldValueDisplay');
   const lv = document.getElementById('laborValueDisplay');
 
-  if (gp) gp.textContent = metalPrice ? `$${metalPrice}` : '—';
-  if (gl) gl.textContent  = metalPrice ? `USD/g (${purityLabel})` : 'USD/g';
-  if (gv) gv.textContent  = metalValue ? `$${metalValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—';
-  if (lv) lv.textContent  = laborValue ? `$${laborValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—';
+  if (gp) gp.textContent = metalPrice ? `${sym}${metalPrice}` : '—';
+  if (gl) gl.textContent  = metalPrice ? `${curCode}/g (${isGold ? purityLabel : isSilver ? 'Silver' : 'Platinum'})` : `${curCode}/g`;
+  if (gv) gv.textContent  = metalValue ? `${sym}${metalValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—';
+  if (lv) lv.textContent  = laborValue ? `${sym}${laborValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—';
 }
 
 // ── Init ───────────────────────────────────────────────────────
@@ -1021,13 +1098,14 @@ function collectDiamonds() {
     const h      = document.getElementById(`ds2-${id}`)?.value || '';
     const qty    = parseInt(document.getElementById(`dq-${id}`)?.value)  || 0;
     const carats = parseFloat(document.getElementById(`dc-${id}`)?.value) || 0;
-    const price  = parseFloat(document.getElementById(`dp-${id}`)?.value) || 0;
+    const priceINR = parseFloat(document.getElementById(`dp-${id}`)?.value) || 0;
+    const price    = convertINR(priceINR); // convert from INR to output currency
     // Build display size string
     const size = isDual(shape)
       ? (w && h ? `${w}×${h}` : w || h || '—')
       : (w ? `${w}` : '—');
     if (carats > 0) {
-      rows.push({ shape, size, qty, carats, price, cost: price * carats });
+      rows.push({ shape, size, qty, carats, price, priceINR, cost: price * carats });
     }
   });
   return rows;
@@ -1038,27 +1116,35 @@ const fmt = n => n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFracti
 
 // ── Build Quotation ────────────────────────────────────────────
 function buildQuotation() {
+  try {
   const purityVal  = document.getElementById('goldPurity')?.value || window._fpPurityVal || '0.76';
   const isSilver   = purityVal === 'silver';
   const isPlat     = purityVal === 'platinum';
   const isGold     = !isSilver && !isPlat;
-  const g24        = parseFloat(document.getElementById('gold24').value)    || 0;
+  const g24inr     = parseFloat(document.getElementById('gold24').value)    || 0;
   const purity     = parseFloat(purityVal) || 0.76;
   const netWeight  = parseFloat(document.getElementById('netWeight').value)  || 0;
   const grossWeight= parseFloat(document.getElementById('grossWeight').value)|| 0;
-  const laborRate  = parseFloat(document.getElementById('laborRate').value)  || 0;
+  const laborRateINR = parseFloat(document.getElementById('laborRate').value)|| 0;
   const goldType   = document.getElementById('goldType').value;
-  const purityLabel= document.getElementById('goldPurity').options[document.getElementById('goldPurity').selectedIndex].text;
+  const _gpEl = document.getElementById('goldPurity');
+  const purityLabel = _gpEl ? (_gpEl.options[_gpEl.selectedIndex]?.text || '18Kt Gold') : (isSilver ? 'Silver' : isPlat ? 'Platinum' : '18Kt Gold');
 
-  // Calculate metal price based on type
+  // Currency
+  const rate     = getExchangeRate();
+  const sym      = getCurrencySymbol();
+  const curCode  = getCurrencyCode();
+
+  // Calculate metal price based on type — convert from INR
   let convertedPrice = 0;
-  if (isGold)       convertedPrice = +(g24 * purity).toFixed(4);
-  else if (isSilver) convertedPrice = parseFloat(document.getElementById('fpSilverPrice').value)||0;
-  else if (isPlat)   convertedPrice = parseFloat(document.getElementById('fpPlatinumPrice').value)||0;
+  if (isGold)        convertedPrice = +((g24inr * (rate||1)) * purity).toFixed(4);
+  else if (isSilver) convertedPrice = convertINR(parseFloat(document.getElementById('fpSilverPrice').value)||0);
+  else if (isPlat)   convertedPrice = convertINR(parseFloat(document.getElementById('fpPlatinumPrice').value)||0);
 
   if (!convertedPrice) { alert(`Enter ${isSilver?'Silver':isPlat?'Platinum':'24Kt gold'} price first.`); return; }
   if (!netWeight)       { alert('Enter Net Weight first.'); return; }
 
+  const laborRate      = convertINR(laborRateINR);
   const goldValue      = +(convertedPrice * netWeight).toFixed(2);
   const laborValue     = +(laborRate * netWeight).toFixed(2);
   const diamonds       = collectDiamonds();
@@ -1070,18 +1156,17 @@ function buildQuotation() {
   const clientName = document.getElementById('clientName').value || '—';
   const quotDate   = document.getElementById('quotDate').value   || '—';
 
-  window._Q = { g24, purity, purityLabel, netWeight, grossWeight, laborRate, goldType,
+  window._Q = { g24:g24inr, purity, purityLabel, netWeight, grossWeight, laborRate, goldType,
     convertedPrice, goldValue, laborValue, diamonds, totalDiamondCost, grandTotal,
     designNo, quotNo, clientName, quotDate,
-    // for history display
     total18: grandTotal, total14: grandTotal, total9: grandTotal };
 
   // ── Build HTML preview ──
   let dRows = '';
   diamonds.forEach(d => {
-    dRows += `<tr><td>${d.shape}${d.size ? ' ' + d.size : ''}</td><td>${d.carats}</td><td>${d.price ? fmt(d.price) : '—'}</td><td>${fmt(d.cost)}</td></tr>`;
+    dRows += `<tr><td>${d.shape}${d.size ? ' ' + d.size : ''}<br><span style="font-size:10px;color:#888;">${d.stoneType||''}</span></td><td>${d.carats}</td><td>${d.price ? sym+fmt(d.cost/d.carats) : '—'}</td><td>${sym}${fmt(d.cost)}</td></tr>`;
   });
-  if (diamonds.length) dRows += `<tr class="subtotal-row"><td colspan="3">Total Diamond Value (USD)</td><td>${fmt(totalDiamondCost)}</td></tr>`;
+  if (diamonds.length) dRows += `<tr class="subtotal-row"><td colspan="3">Total Diamond Value (${curCode})</td><td>${sym}${fmt(totalDiamondCost)}</td></tr>`;
 
   // Build images HTML
   const fpNotes = document.getElementById('fpNotes')?.value?.trim() || '';
@@ -1104,7 +1189,7 @@ function buildQuotation() {
     <div class="quot-header">
       <div>
         <h2>FINISHED PRODUCT</h2>
-        <div style="font-size:11px;color:#aaa;margin-top:4px;letter-spacing:1px;">Currency: USD</div>
+        <div style="font-size:11px;color:#aaa;margin-top:4px;letter-spacing:1px;">Currency: ${curCode} &nbsp;|&nbsp; Rate: 1 ₹ = ${rate} ${curCode}</div>
       </div>
       <div class="quot-header-right">
         <strong>Ref No.: ${quotNo}</strong><br>
@@ -1152,20 +1237,20 @@ function buildQuotation() {
         </div>
       </div>
 
-      <div class="quot-meta-item"><span class="mk">Currency</span><span class="mv">USD</span></div>
+      <div class="quot-meta-item"><span class="mk">Currency</span><span class="mv">${curCode}</span></div>
     </div>
 
     <div class="quot-body">
 
       <!-- Gold Details -->
-      <div class="quot-section-title"><span class="icon">🏅</span> 1. GOLD DETAILS</div>
+      <div class="quot-section-title"><span class="icon">🏅</span> 1. ${isSilver ? 'SILVER' : isPlat ? 'PLATINUM' : 'GOLD'} DETAILS</div>
       <table class="quot-table">
-        <tr><th>Description</th><th>Net Weight (g)</th><th>Price (USD/g)</th><th>Amount (USD)</th></tr>
+        <tr><th>Description</th><th>Net Weight (g)</th><th>Price (${curCode}/g)</th><th>Amount (${curCode})</th></tr>
         <tr>
-          <td>${purityLabel} ${goldType}<br><span style="font-size:10px;color:#888;">${isGold ? `24Kt $${fmt(g24)} × ${purity} = $${fmt(convertedPrice)}/g` : `$${fmt(convertedPrice)}/g`}</span></td>
+          <td>${isSilver ? 'Silver' : isPlat ? 'Platinum' : `${purityLabel} ${goldType}`}<br><span style="font-size:10px;color:#888;">${isGold ? `24Kt ₹${fmt(g24inr)} × ${purity} = ${sym}${fmt(convertedPrice)}/g` : `${sym}${fmt(convertedPrice)}/g`}</span></td>
           <td>${netWeight}</td>
-          <td>${fmt(convertedPrice)}</td>
-          <td>${fmt(goldValue)}</td>
+          <td>${sym}${fmt(convertedPrice)}</td>
+          <td>${sym}${fmt(goldValue)}</td>
         </tr>
       </table>
 
@@ -1173,19 +1258,19 @@ function buildQuotation() {
       <!-- Diamond Details -->
       <div class="quot-section-title"><span class="icon">💎</span> 2. DIAMOND DETAILS</div>
       <table class="quot-table">
-        <tr><th>Description</th><th>Carat (ct)</th><th>Price (USD/ct)</th><th>Amount (USD)</th></tr>
+        <tr><th>Description</th><th>Carat (ct)</th><th>Price (${curCode}/ct)</th><th>Amount (${curCode})</th></tr>
         ${dRows}
       </table>` : ''}
 
       <!-- Labor -->
       <div class="quot-section-title"><span class="icon">🔧</span> ${diamonds.length?'3':'2'}. LABOR / MANUFACTURING</div>
       <table class="quot-table">
-        <tr><th>Description</th><th>Rate (USD/g)</th><th>Net Weight (g)</th><th>Amount (USD)</th></tr>
+        <tr><th>Description</th><th>Rate (${curCode}/g)</th><th>Net Weight (g)</th><th>Amount (${curCode})</th></tr>
         <tr>
-          <td>${purityLabel} ${goldType} Labor</td>
-          <td>${fmt(laborRate)}</td>
+          <td>${isSilver ? 'Silver Labor' : isPlat ? 'Platinum Labor' : `${purityLabel} ${goldType} Labor`}</td>
+          <td>${sym}${fmt(laborRate)}</td>
           <td>${netWeight}</td>
-          <td>${fmt(laborValue)}</td>
+          <td>${sym}${fmt(laborValue)}</td>
         </tr>
       </table>
 
@@ -1193,19 +1278,19 @@ function buildQuotation() {
       <div class="quot-section-title" style="margin-top:20px;">📊 FINAL VALUE</div>
       <div class="quot-summary">
         <div class="quot-summary-head" style="grid-template-columns:1fr 1fr;">
-          <span>ITEM</span><span style="text-align:right;">AMOUNT (USD)</span>
+          <span>ITEM</span><span style="text-align:right;">AMOUNT (${curCode})</span>
         </div>
         <div class="quot-summary-row" style="grid-template-columns:1fr 1fr;">
-          <span>Gold Value (${purityLabel})</span><span>$ ${fmt(goldValue)}</span>
+          <span>${isSilver ? 'Silver Value' : isPlat ? 'Platinum Value' : `Gold Value (${purityLabel})`}</span><span>${sym}${fmt(goldValue)}</span>
         </div>
         ${diamonds.length ? `<div class="quot-summary-row" style="grid-template-columns:1fr 1fr;">
-          <span>Diamond Value</span><span>$ ${fmt(totalDiamondCost)}</span>
+          <span>Diamond Value</span><span>${sym}${fmt(totalDiamondCost)}</span>
         </div>` : ''}
         <div class="quot-summary-row" style="grid-template-columns:1fr 1fr;">
-          <span>Labor / Manufacturing</span><span>$ ${fmt(laborValue)}</span>
+          <span>Labor / Manufacturing</span><span>${sym}${fmt(laborValue)}</span>
         </div>
         <div class="quot-summary-row total" style="grid-template-columns:1fr 1fr;">
-          <span>GRAND TOTAL</span><span>$ ${fmt(grandTotal)}</span>
+          <span>GRAND TOTAL</span><span>${sym}${fmt(grandTotal)}</span>
         </div>
       </div>
 
@@ -1213,7 +1298,7 @@ function buildQuotation() {
 
     <div class="quot-notes">
       <p>⭐ Value calculated based on net weight of ${netWeight}g at ${purityLabel} purity.</p>
-      <p>⭐ 24Kt gold price: $${fmt(g24)}/g | ${purityLabel} converted price: $${fmt(convertedPrice)}/g</p>
+      <p>⭐ Metal price (INR): ₹${fmt(g24inr)} | Converted: ${sym}${fmt(convertedPrice)}/g</p>
     </div>
 
     ${cadHTML}
@@ -1227,6 +1312,10 @@ function buildQuotation() {
 
   document.getElementById('quotPreview').innerHTML = html;
   document.getElementById('quotPreview').scrollIntoView({behavior:'smooth'});
+  } catch(err) {
+    console.error('FP buildQuotation error:', err);
+    alert('Error generating preview: ' + err.message);
+  }
 }
 
 
@@ -1803,159 +1892,6 @@ function autoRestoreForm() {
 document.addEventListener('input',  () => { snapshotForUndo(); autoSaveForm(); }, true);
 document.addEventListener('change', () => { snapshotForUndo(); autoSaveForm(); }, true);
 
-
-
-// ══════════════════════════════════════════════════════════════
-// ── CLOUD API ─────────────────────────────────────────────────
-// ══════════════════════════════════════════════════════════════
-const API_BASE = window.location.origin;
-
-async function apiGet(path) {
-  try { const r=await fetch(API_BASE+path); return r.ok?await r.json():null; } catch(e){return null;}
-}
-async function apiPost(path,data) {
-  try { const r=await fetch(API_BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return await r.json(); } catch(e){return null;}
-}
-async function apiDelete(path) {
-  try { const r=await fetch(API_BASE+path,{method:'DELETE'});return await r.json(); } catch(e){return null;}
-}
-
-let _saveTimer=null;
-async function autoSaveForm() {
-  clearTimeout(_saveTimer);
-  _saveTimer=setTimeout(async function(){try{await apiPost('/api/formstate/fp',captureFormSnapshot());}catch(e){}},800);
-}
-
-async function autoRestoreForm() {
-  try {
-    
-    
-    const data=await apiGet('/api/formstate/fp');
-    if(!data)return;
-    const fields=['quotNo','designNo','clientName','quotDate','gold24','goldType','goldPurity','netWeight','grossWeight','laborRate'];
-    fields.forEach(function(id){const el=document.getElementById(id);if(el&&data[id]!==undefined)el.value=data[id];});
-    autoCalcFP();
-    const fn=document.getElementById('fpNotes');if(fn&&data.fpNotes)fn.value=data.fpNotes;
-    if(data.diamonds&&data.diamonds.length){
-      document.getElementById('dRows').innerHTML='';dRowCount=0;
-      data.diamonds.forEach(function(d){addDRow({shape:d.shape,sizeW:d.sizeW,sizeH:d.sizeH,qty:d.qty,carats:d.carats,price:d.price,stoneType:d.stoneType});});
-    }
-    setTimeout(function(){undoStack=[captureFormSnapshot()];},100);
-  } catch(e){console.warn('Cloud restore failed:',e);}
-}
-
-async function saveQuotation() {
-  const quotNo=document.getElementById('quotNo').value&&document.getElementById('quotNo').value.trim();
-  if(!quotNo){alert('Please enter a Quotation No.');return;}
-  const ev=window.event;
-  const btn=ev&&ev.target||document.querySelector('.btn-generate');
-  const orig=btn&&btn.innerHTML||'';
-  if(btn){btn.innerHTML='⏳ Saving...';btn.disabled=true;}
-  try {
-    const data=captureFormSnapshot();
-    let pdfBase64=null;
-    const el=document.querySelector('.quot-paper');
-    if(el){
-      if(!window.html2canvas)await new Promise(function(res,rej){const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
-      const ow=el.style.width;el.style.width='900px';
-      const canvas=await html2canvas(el,{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',logging:false,width:900,windowWidth:900});
-      el.style.width=ow;
-      const imgData=canvas.toDataURL('image/jpeg',0.82);
-      const PW=210,PH=Math.ceil((canvas.height/canvas.width)*PW);
-      const j=window.jspdf;const doc=new j.jsPDF({unit:'mm',format:[PW,PH]});
-      doc.addImage(imgData,'JPEG',0,0,PW,PH);
-      pdfBase64=doc.output('datauristring');
-    }
-    data.pdfBase64=pdfBase64;data.hasPdf=!!pdfBase64;
-    await apiPost('/api/quotations',data);
-    await renderHistory();
-    if(btn){btn.innerHTML='✓ Saved to Cloud!';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);}
-  } catch(e){if(btn){btn.innerHTML=orig;btn.disabled=false;}alert('Save failed: '+e.message);}
-}
-
-async function renderHistory() {
-  const list=await apiGet('/api/quotations')||[];
-  const container=document.getElementById('historyList');
-  if(!list.length){container.innerHTML='<div class="hist-empty">💎 No saved quotations yet.</div>';return;}
-  const groups={};
-  list.forEach(function(q){
-    const dk=new Date(q.updated_at||q.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-    if(!groups[dk])groups[dk]=[];groups[dk].push(q);
-  });
-  let html='';
-  for(const date in groups){
-    html+='<div class="hist-group-title">📅 '+date+'</div>';
-    groups[date].forEach(function(q){
-      const qd=q.data||q;
-      const t18=qd.total18?'$'+parseFloat(qd.total18).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
-      const tm=new Date(q.updated_at||q.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-      const qno=q.quot_no||q.quotNo||'';
-      const dno=q.design_no||q.designNo||'';
-      const cln=q.client_name||q.clientName||'';
-      const pdfBtn=q.has_pdf
-        ?'<button class="hist-btn" style="background:rgba(86,192,117,0.15);color:#56C075;border:1px solid rgba(86,192,117,0.3);" onclick="downloadSavedPdf(\''+qno+'\')">⬇ PDF</button>'
-        :'<button class="hist-btn" style="background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.3);" onclick="regenPdf(\''+qno+'\')">🔄 PDF</button>';
-      html+='<div class="hist-card"><div class="hist-card-info"><div class="hist-card-title">📄 '+qno+(dno?' — '+dno:'')+'</div><div class="hist-card-meta">'+(cln?'👤 '+cln+' &nbsp;·&nbsp; ':'')+' 🕐 '+tm+(q.has_pdf?' &nbsp;·&nbsp; <span style="color:#56C075;">✓ PDF</span>':'')+'</div></div><div style="text-align:right;min-width:70px;"><div class="hist-card-total">'+t18+'</div><div style="font-size:9px;color:var(--muted);">total</div></div><div class="hist-card-btns" style="flex-direction:column;gap:4px;"><div style="display:flex;gap:4px;"><button class="hist-btn load" onclick="loadQuotation(\''+qno+'\')">Load</button>'+pdfBtn+'</div><button class="hist-btn del" style="width:100%;" onclick="deleteQuotation(\''+qno+'\')">✕ Delete</button></div></div>';
-    });
-  }
-  container.innerHTML=html;
-}
-
-async function loadQuotation(quotNo) {
-  const q=await apiGet('/api/quotations/'+encodeURIComponent(quotNo));
-  if(!q)return;
-  const data=q.data||q;
-  const fields=['quotNo','designNo','clientName','quotDate','gold24','goldType','goldPurity','netWeight','grossWeight','laborRate'];
-  fields.forEach(function(id){const el=document.getElementById(id);if(el&&data[id]!==undefined)el.value=data[id];});
-  autoCalcFP();
-  const fn=document.getElementById('fpNotes');if(fn&&data.fpNotes)fn.value=data.fpNotes;
-  
-  if(data.diamonds&&data.diamonds.length){document.getElementById('dRows').innerHTML='';dRowCount=0;data.diamonds.forEach(function(d){addDRow({shape:d.shape,sizeW:d.sizeW,sizeH:d.sizeH,qty:d.qty,carats:d.carats,price:d.price,stoneType:d.stoneType});});}
-  toggleHistory();
-}
-
-async function deleteQuotation(quotNo) {
-  if(!confirm('Delete "'+quotNo+'"?'))return;
-  await apiDelete('/api/quotations/'+encodeURIComponent(quotNo));
-  await renderHistory();
-}
-
-async function downloadSavedPdf(quotNo) {
-  const q=await apiGet('/api/quotations/'+encodeURIComponent(quotNo));
-  if(!q||!q.pdf_base64){alert('No PDF saved.');return;}
-  const a=document.createElement('a');a.href=q.pdf_base64;a.download='Quotation_'+quotNo+'.pdf';a.click();
-}
-
-async function clearAllHistory() {
-  if(!confirm('Delete ALL saved quotations?'))return;
-  const list=await apiGet('/api/quotations')||[];
-  await Promise.all(list.map(function(q){return apiDelete('/api/quotations/'+encodeURIComponent(q.quot_no||q.quotNo));}));
-  await renderHistory();
-}
-
-function toggleHistory() {
-  const drawer=document.getElementById('historyDrawer');
-  const isOpen=drawer.style.display!=='none';
-  drawer.style.display=isOpen?'none':'block';
-  if(!isOpen)renderHistory();
-}
-
-async function manualSaveSettings() {
-  const btn=null;
-  const orig=btn&&btn.innerHTML||'';
-  if(btn){btn.innerHTML='⏳ Saving...';btn.disabled=true;}
-  try {
-    
-    if(btn){btn.innerHTML='✓ Saved to Cloud!';btn.style.color='#56C075';setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;btn.style.color='#90EE90';},2000);}
-  } catch(e){if(btn){btn.innerHTML=orig;btn.disabled=false;}}
-}
-
-async function removeExcel() {
-  diamondPriceList=[];window._excelBase64=null;
-  await apiDelete('/api/settings/excel_quot');
-  document.getElementById('xlsStatus').innerHTML='<div class="badge info">Excel removed</div>';
-  document.getElementById('removeExcelBtn').style.display='none';
-}
 
 </script>
 </body>
